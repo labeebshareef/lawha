@@ -1,0 +1,200 @@
+/* ============================================
+   LAWHA HIJABS — Animations
+   Keyframes, scroll animations, hover transitions
+   Apple-level subtle motion design
+   ============================================ */
+
+/* =========================================
+   KEYFRAMES
+   ========================================= */
+
+/* Fade In Up */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade In */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Subtle Scale In */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Image Reveal (clip from left) */
+@keyframes imageReveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Line Expand */
+@keyframes lineExpand {
+  from { width: 0; }
+  to { width: 60px; }
+}
+
+/* Gentle Float */
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+
+/* =========================================
+   SCROLL ANIMATION CLASSES
+   These classes are applied/removed by IntersectionObserver
+   ========================================= */
+
+/* Base state — hidden before scroll trigger */
+.anim-fade-up {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity var(--duration-slower) var(--ease-out),
+              transform var(--duration-slower) var(--ease-out);
+}
+
+.anim-fade-up.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Fade In */
+.anim-fade-in {
+  opacity: 0;
+  transition: opacity var(--duration-slower) var(--ease-out);
+}
+
+.anim-fade-in.is-visible {
+  opacity: 1;
+}
+
+/* Scale In */
+.anim-scale-in {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity var(--duration-slower) var(--ease-out),
+              transform var(--duration-slower) var(--ease-out);
+}
+
+.anim-scale-in.is-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Slide from left */
+.anim-slide-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity var(--duration-slower) var(--ease-out),
+              transform var(--duration-slower) var(--ease-out);
+}
+
+.anim-slide-left.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Slide from right */
+.anim-slide-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity var(--duration-slower) var(--ease-out),
+              transform var(--duration-slower) var(--ease-out);
+}
+
+.anim-slide-right.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Image Reveal (clip-path based) */
+.anim-image-reveal {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path var(--duration-slowest) var(--ease-out);
+}
+
+.anim-image-reveal.is-visible {
+  clip-path: inset(0 0 0 0);
+}
+
+/* Divider Line Expand */
+.anim-line {
+  width: 0;
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.anim-line.is-visible {
+  width: 60px;
+}
+
+
+/* =========================================
+   STAGGER DELAYS
+   Apply to children for cascading animations
+   ========================================= */
+.stagger-children > *:nth-child(1) { transition-delay: 0ms; }
+.stagger-children > *:nth-child(2) { transition-delay: 100ms; }
+.stagger-children > *:nth-child(3) { transition-delay: 200ms; }
+.stagger-children > *:nth-child(4) { transition-delay: 300ms; }
+.stagger-children > *:nth-child(5) { transition-delay: 400ms; }
+.stagger-children > *:nth-child(6) { transition-delay: 500ms; }
+.stagger-children > *:nth-child(7) { transition-delay: 600ms; }
+.stagger-children > *:nth-child(8) { transition-delay: 700ms; }
+.stagger-children > *:nth-child(9) { transition-delay: 800ms; }
+.stagger-children > *:nth-child(10) { transition-delay: 900ms; }
+.stagger-children > *:nth-child(11) { transition-delay: 1000ms; }
+.stagger-children > *:nth-child(12) { transition-delay: 1100ms; }
+
+
+/* =========================================
+   HOVER TRANSITIONS
+   ========================================= */
+
+/* Generic hover lift */
+.hover-lift {
+  transition: transform var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Image hover zoom (container must have overflow:hidden) */
+.hover-zoom {
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.hover-zoom:hover {
+  transform: scale(1.05);
+}
+
+
+/* =========================================
+   PAGE TRANSITION
+   ========================================= */
+.page-transition {
+  animation: fadeIn var(--duration-slow) var(--ease-out);
+}
