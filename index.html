@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="LAWHA HIJABS — Premium modest fashion hijabs. Wear Your Crown. Discover our curated collection of luxury hijabs designed for the modern modest woman.">
+  <meta name="keywords" content="hijab, modest fashion, premium hijabs, luxury hijabs, modest wear, lawha hijabs">
+  <meta name="author" content="LAWHA HIJABS">
+  <meta property="og:title" content="LAWHA HIJABS — Wear Your Crown">
+  <meta property="og:description" content="Premium modest fashion hijabs. Discover our curated collection of luxury hijabs designed for the modern modest woman.">
+  <meta property="og:type" content="website">
+  <title>LAWHA HIJABS — Wear Your Crown</title>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/typography.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/responsive.css">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/logo/favicon.png">
+</head>
+<body class="page-transition">
+
+  <!-- Scroll Progress Bar -->
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <!-- =========================================
+       NAVBAR
+       ========================================= -->
+  <nav class="navbar navbar--transparent" id="navbar" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <div class="navbar__inner">
+
+        <!-- Logo -->
+        <a href="index.html" class="navbar__logo" aria-label="LAWHA HIJABS Home">
+          <img src="assets/logo/logo.png" alt="LAWHA HIJABS Logo" width="40" height="40">
+          <span class="navbar__logo-text">Lawha</span>
+        </a>
+
+        <!-- Desktop Navigation -->
+        <div class="navbar__nav" id="navLinks">
+          <a href="index.html" class="navbar__link active">Home</a>
+          <a href="collections.html" class="navbar__link">Collections</a>
+          <a href="about.html" class="navbar__link">About</a>
+          <a href="contact.html" class="navbar__link">Contact</a>
+        </div>
+
+        <!-- Hamburger Menu Button -->
+        <button class="navbar__hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div class="navbar__mobile-overlay" id="mobileOverlay">
+      <a href="index.html" class="navbar__link active">Home</a>
+      <a href="collections.html" class="navbar__link">Collections</a>
+      <a href="about.html" class="navbar__link">About</a>
+      <a href="contact.html" class="navbar__link">Contact</a>
+    </div>
+  </nav>
+
+
+  <!-- =========================================
+       SECTION 1: HERO
+       ========================================= -->
+  <section class="hero" id="hero">
+    <img
+      src="assets/banners/hero-banner.jpg"
+      alt="LAWHA HIJABS — Premium Modest Fashion"
+      class="hero__bg"
+    >
+    <div class="hero__overlay"></div>
+    <div class="hero__content">
+      <p class="hero__overline">Premium Modest Fashion</p>
+      <h1 class="hero__title">Wear Your Crown</h1>
+      <p class="hero__tagline">Elegance woven into every thread</p>
+      <div class="hero__cta">
+        <a href="collections.html" class="btn btn--secondary">
+          Discover Collection
+          <span class="btn__arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =========================================
+       SECTION 2: BRAND INTRODUCTION
+       ========================================= -->
+  <section class="section" id="brand-intro">
+    <div class="container">
+      <div class="brand-intro">
+        <div class="brand-intro__image anim-image-reveal">
+          <img
+            src="assets/models/model-1.jpg"
+            alt="LAWHA HIJABS — Modest Fashion Model"
+            loading="lazy"
+          >
+        </div>
+        <div class="brand-intro__content anim-fade-up">
+          <p class="overline">Our Story</p>
+          <h2>Where Modesty<br>Meets Luxury</h2>
+          <div class="divider"></div>
+          <p>LAWHA HIJABS was born from a desire to elevate modest fashion. We believe that every woman deserves to feel confident, elegant, and empowered — without compromise.</p>
+          <p>Each hijab in our collection is carefully curated using premium fabrics and timeless designs that celebrate the beauty of modesty.</p>
+          <a href="about.html" class="btn btn--outline" style="margin-top: var(--space-5);">
+            Our Journey
+            <span class="btn__arrow">→</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =========================================
+       SECTION 3: FEATURED COLLECTION
+       ========================================= -->
+  <section class="section section--alt" id="featured-collection">
+    <div class="container">
+      <div class="section-header anim-fade-up">
+        <p class="section-header__overline">New Arrivals</p>
+        <h2 class="section-header__title">Featured Collection</h2>
+        <p class="section-header__desc">Discover our latest curated selection of premium hijabs, crafted for the modern woman.</p>
+      </div>
+
+      <div class="grid grid--4 stagger-children">
+
+        <!-- Product 1 -->
+        <div class="product-card anim-fade-up">
+          <div class="product-card__image-wrapper">
+            <span class="product-card__badge">New</span>
+            <img
+              src="assets/products/product-1.jpg"
+              alt="Silk Satin Hijab — Dusty Rose"
+              class="product-card__image"
+              loading="lazy"
+            >
+            <div class="product-card__overlay">
+              <a href="#" class="btn btn--secondary" style="font-size: 0.65rem; padding: 10px 20px;">Quick View</a>
+            </div>
+          </div>
+          <div class="product-card__info">
+            <h4 class="product-card__name">Silk Satin — Dusty Rose</h4>
+            <p class="product-card__price">AED 189</p>
+          </div>
+        </div>
+
+        <!-- Product 2 -->
+        <div class="product-card anim-fade-up">
+          <div class="product-card__image-wrapper">
+            <img
+              src="assets/products/product-2.jpg"
+              alt="Jersey Cotton Hijab — Midnight"
+              class="product-card__image"
+              loading="lazy"
+            >
+            <div class="product-card__overlay">
+              <a href="#" class="btn btn--secondary" style="font-size: 0.65rem; padding: 10px 20px;">Quick View</a>
+            </div>
+          </div>
+          <div class="product-card__info">
+            <h4 class="product-card__name">Jersey Cotton — Midnight</h4>
+            <p class="product-card__price">AED 149</p>
+          </div>
+        </div>
+
+        <!-- Product 3 -->
+        <div class="product-card anim-fade-up">
+          <div class="product-card__image-wrapper">
+            <img
+              src="assets/products/product-3.jpg"
+              alt="Chiffon Hijab — Ivory"
+              class="product-card__image"
+              loading="lazy"
+            >
+            <div class="product-card__overlay">
+              <a href="#" class="btn btn--secondary" style="font-size: 0.65rem; padding: 10px 20px;">Quick View</a>
+            </div>
+          </div>
+          <div class="product-card__info">
+            <h4 class="product-card__name">Chiffon — Ivory</h4>
+            <p class="product-card__price">AED 129</p>
+          </div>
+        </div>
+
+        <!-- Product 4 -->
+        <div class="product-card anim-fade-up">
+          <div class="product-card__image-wrapper">
+            <span class="product-card__badge">Best Seller</span>
+            <img
+              src="assets/products/product-4.jpg"
+              alt="Crêpe Hijab — Mocha"
+              class="product-card__image"
+              loading="lazy"
+            >
+            <div class="product-card__overlay">
+              <a href="#" class="btn btn--secondary" style="font-size: 0.65rem; padding: 10px 20px;">Quick View</a>
+            </div>
+          </div>
+          <div class="product-card__info">
+            <h4 class="product-card__name">Crêpe — Mocha</h4>
+            <p class="product-card__price">AED 159</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="text-center" style="margin-top: var(--space-7);">
+        <a href="collections.html" class="btn btn--primary">
+          View All Collections
+          <span class="btn__arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =========================================
+       SECTION 4: MODEL SHOWCASE
+       ========================================= -->
+  <section class="section" id="model-showcase">
+    <div class="container">
+      <div class="section-header anim-fade-up">
+        <p class="section-header__overline">Editorial</p>
+        <h2 class="section-header__title">The LAWHA Woman</h2>
+        <p class="section-header__desc">Confidence. Grace. Strength. Our hijabs are designed for the woman who wears her identity with pride.</p>
+      </div>
+
+      <div class="grid grid--3 stagger-children" style="gap: var(--space-4);">
+        <div class="image-card aspect-portrait anim-fade-up">
+          <img
+            src="assets/models/model-2.jpg"
+            alt="LAWHA HIJABS Model — Editorial Shot 1"
+            class="image-card__img"
+            loading="lazy"
+          >
+          <div class="image-card__caption">
+            <h4>Confidence</h4>
+            <p>Silk Satin Collection</p>
+          </div>
+        </div>
+
+        <div class="image-card aspect-portrait anim-fade-up">
+          <img
+            src="assets/models/model-3.jpg"
+            alt="LAWHA HIJABS Model — Editorial Shot 2"
+            class="image-card__img"
+            loading="lazy"
+          >
+          <div class="image-card__caption">
+            <h4>Grace</h4>
+            <p>Chiffon Collection</p>
+          </div>
+        </div>
+
+        <div class="image-card aspect-portrait anim-fade-up">
+          <img
+            src="assets/models/model-4.jpg"
+            alt="LAWHA HIJABS Model — Editorial Shot 3"
+            class="image-card__img"
+            loading="lazy"
+          >
+          <div class="image-card__caption">
+            <h4>Strength</h4>
+            <p>Premium Crêpe Collection</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =========================================
+       SECTION 5: WHY CHOOSE LAWHA
+       ========================================= -->
+  <section class="section section--alt" id="why-lawha">
+    <div class="container">
+      <div class="section-header anim-fade-up">
+        <p class="section-header__overline">Why LAWHA</p>
+        <h2 class="section-header__title">Crafted With Purpose</h2>
+      </div>
+
+      <div class="grid grid--4 stagger-children">
+        <!-- Feature 1 -->
+        <div class="feature-card anim-fade-up">
+          <div class="feature-card__icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </div>
+          <h4 class="feature-card__title">Premium Fabrics</h4>
+          <p class="feature-card__desc">Only the finest materials — silk, chiffon, jersey, and crêpe — selected for unmatched comfort and luxury.</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card anim-fade-up">
+          <div class="feature-card__icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+            </svg>
+          </div>
+          <h4 class="feature-card__title">Modest & Modern</h4>
+          <p class="feature-card__desc">Designs that honor modesty while embracing contemporary fashion trends and editorial aesthetics.</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card anim-fade-up">
+          <div class="feature-card__icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
+          <h4 class="feature-card__title">Ethically Made</h4>
+          <p class="feature-card__desc">Committed to sustainable and ethical production practices. Each piece is crafted with care and responsibility.</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card anim-fade-up">
+          <div class="feature-card__icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+          </div>
+          <h4 class="feature-card__title">Effortless Style</h4>
+          <p class="feature-card__desc">Every hijab is designed to drape beautifully, staying in place all day while looking absolutely stunning.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =========================================
+       SECTION 6: INSTAGRAM GALLERY
+       ========================================= -->
+  <section class="section" id="instagram" style="padding-bottom: 0;">
+    <div class="container">
+      <div class="section-header anim-fade-up">
+        <p class="section-header__overline">@lawhahijabs</p>
+        <h2 class="section-header__title">Follow Our Journey</h2>
+      </div>
+    </div>
+    <div class="insta-grid anim-fade-in">
+      <div class="insta-grid__item">
+        <img src="assets/models/insta-1.jpg" alt="LAWHA HIJABS Instagram" loading="lazy">
+      </div>
+      <div class="insta-grid__item">
+        <img src="assets/products/insta-2.jpg" alt="LAWHA HIJABS Instagram" loading="lazy">
+      </div>
+      <div class="insta-grid__item">
+        <img src="assets/models/insta-3.jpg" alt="LAWHA HIJABS Instagram" loading="lazy">
+      </div>
+      <div class="insta-grid__item">
+        <img src="assets/products/insta-4.jpg" alt="LAWHA HIJABS Instagram" loading="lazy">
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =========================================
+       SECTION 7: TESTIMONIALS
+       ========================================= -->
+  <section class="section" id="testimonials">
+    <div class="container">
+      <div class="section-header anim-fade-up">
+        <p class="section-header__overline">Testimonials</p>
+        <h2 class="section-header__title">What Our Queens Say</h2>
+      </div>
+
+      <div class="grid grid--3 stagger-children">
+        <div class="testimonial-card anim-fade-up">
+          <p class="testimonial-card__quote">The quality is unmatched. I've never worn a hijab that feels this luxurious and drapes so perfectly.</p>
+          <p class="testimonial-card__author">Fatima A.</p>
+        </div>
+
+        <div class="testimonial-card anim-fade-up">
+          <p class="testimonial-card__quote">LAWHA truly understands modest fashion. Elegant, modern, and absolutely beautiful pieces.</p>
+          <p class="testimonial-card__author">Noor M.</p>
+        </div>
+
+        <div class="testimonial-card anim-fade-up">
+          <p class="testimonial-card__quote">Every piece feels like a crown. The attention to detail and fabric quality is incredible.</p>
+          <p class="testimonial-card__author">Amira K.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =========================================
+       SECTION 8: CALL TO ACTION
+       ========================================= -->
+  <section class="cta-banner" id="cta">
+    <img
+      src="assets/banners/cta-banner.jpg"
+      alt="LAWHA HIJABS — Shop Now"
+      class="cta-banner__bg"
+      loading="lazy"
+    >
+    <div class="cta-banner__content anim-fade-up">
+      <p class="overline" style="color: var(--accent-light); margin-bottom: var(--space-4);">Ready to Elevate Your Style?</p>
+      <h2 class="cta-banner__title">Wear Your Crown</h2>
+      <p class="cta-banner__desc">Explore our latest collection and discover the hijab that speaks to you.</p>
+      <a href="collections.html" class="btn btn--accent">
+        Shop Now
+        <span class="btn__arrow">→</span>
+      </a>
+    </div>
+  </section>
+
+
+  <!-- =========================================
+       SECTION 9: FOOTER
+       ========================================= -->
+  <footer class="footer" id="footer">
+    <div class="container">
+      <div class="footer__grid">
+
+        <!-- Brand Column -->
+        <div>
+          <h3 class="footer__brand-name">LAWHA HIJABS</h3>
+          <p class="footer__brand-desc">Premium modest fashion hijabs. Empowering women to wear their crown with confidence, grace, and elegance.</p>
+        </div>
+
+        <!-- Quick Links -->
+        <div>
+          <h4 class="footer__heading">Explore</h4>
+          <a href="index.html" class="footer__link">Home</a>
+          <a href="collections.html" class="footer__link">Collections</a>
+          <a href="about.html" class="footer__link">About Us</a>
+          <a href="contact.html" class="footer__link">Contact</a>
+        </div>
+
+        <!-- Help -->
+        <div>
+          <h4 class="footer__heading">Help</h4>
+          <a href="#" class="footer__link">Shipping & Returns</a>
+          <a href="#" class="footer__link">Size Guide</a>
+          <a href="#" class="footer__link">Care Instructions</a>
+          <a href="#" class="footer__link">FAQ</a>
+        </div>
+
+        <!-- Contact -->
+        <div>
+          <h4 class="footer__heading">Get in Touch</h4>
+          <a href="mailto:hello@lawhahijabs.com" class="footer__link">hello@lawhahijabs.com</a>
+          <a href="tel:+971501234567" class="footer__link">+971 50 123 4567</a>
+          <a href="https://wa.me/971501234567" class="footer__link">WhatsApp Order</a>
+        </div>
+      </div>
+
+      <div class="footer__bottom">
+        <p class="footer__copyright">© <span class="current-year"></span> LAWHA HIJABS. All rights reserved.</p>
+        <div class="footer__socials">
+          <a href="#" class="footer__social-link" aria-label="Instagram">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+          </a>
+          <a href="#" class="footer__social-link" aria-label="TikTok">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.88-2.88 2.89 2.89 0 012.88-2.88c.28 0 .54.04.79.11v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V8.73a8.26 8.26 0 004.78 1.52v-3.4a4.85 4.85 0 01-1.02-.16z"/></svg>
+          </a>
+          <a href="#" class="footer__social-link" aria-label="Facebook">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- JavaScript -->
+  <script src="js/scrollAnimations.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/interactions.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

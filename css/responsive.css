@@ -1,0 +1,249 @@
+/* ============================================
+   LAWHA HIJABS — Responsive Design
+   Mobile-first breakpoints: 320px → 768px → 1024px → 1440px
+   ============================================ */
+
+/* =========================================
+   MOBILE FIRST (Base: < 768px)
+   ========================================= */
+
+/* Navbar — Mobile */
+@media (max-width: 768px) {
+  .navbar__nav {
+    display: none;
+  }
+
+  .navbar__hamburger {
+    display: flex;
+  }
+
+  .navbar__logo-text {
+    font-size: var(--text-lg);
+  }
+}
+
+/* Hero — Mobile */
+@media (max-width: 768px) {
+  .hero {
+    min-height: 85vh;
+  }
+
+  .hero__title {
+    font-size: var(--text-3xl);
+  }
+
+  .hero__tagline {
+    font-size: var(--text-md);
+  }
+}
+
+/* Grid — Mobile */
+@media (max-width: 768px) {
+  .grid--2,
+  .grid--3,
+  .grid--4 {
+    grid-template-columns: 1fr;
+  }
+
+  .grid--12 {
+    grid-template-columns: 1fr;
+  }
+
+  .col-span-2,
+  .col-span-3,
+  .col-span-4,
+  .col-span-5,
+  .col-span-6,
+  .col-span-7,
+  .col-span-8,
+  .col-span-12 {
+    grid-column: span 1;
+  }
+}
+
+/* Brand Intro / Story — Mobile */
+@media (max-width: 768px) {
+  .brand-intro {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  .brand-intro__image {
+    aspect-ratio: 4 / 3;
+  }
+
+  .story-section {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  .story-section--reverse {
+    direction: ltr;
+  }
+
+  .story-section__image {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+/* Instagram Grid — Mobile */
+@media (max-width: 768px) {
+  .insta-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Product Grid — Mobile */
+@media (max-width: 768px) {
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+  }
+
+  .product-card__name {
+    font-size: var(--text-base);
+  }
+}
+
+/* Footer — Mobile */
+@media (max-width: 768px) {
+  .footer__grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  .footer__bottom {
+    flex-direction: column;
+    gap: var(--space-4);
+    text-align: center;
+  }
+}
+
+/* Contact — Mobile */
+@media (max-width: 768px) {
+  .contact-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Values — Mobile */
+@media (max-width: 768px) {
+  .values-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+/* Page Hero — Mobile */
+@media (max-width: 768px) {
+  .page-hero {
+    height: 40vh;
+    min-height: 300px;
+  }
+
+  .page-hero__title {
+    font-size: var(--text-3xl);
+  }
+}
+
+/* Section Header — Mobile */
+@media (max-width: 768px) {
+  .section-header {
+    margin-bottom: var(--space-6);
+  }
+
+  .section-header__title {
+    font-size: var(--text-3xl);
+  }
+}
+
+/* Testimonials — Mobile */
+@media (max-width: 768px) {
+  .testimonial-card {
+    padding: var(--space-6) var(--space-4);
+  }
+}
+
+
+/* =========================================
+   TABLET (768px — 1024px)
+   ========================================= */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .grid--4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid--3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .footer__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .insta-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .brand-intro {
+    gap: var(--space-6);
+  }
+
+  .values-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+
+/* =========================================
+   LAPTOP (1024px — 1440px)
+   ========================================= */
+@media (min-width: 1024px) and (max-width: 1440px) {
+  .products-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+
+/* =========================================
+   LARGE DESKTOP (> 1440px)
+   ========================================= */
+@media (min-width: 1440px) {
+  .products-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .insta-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+
+/* =========================================
+   UTILITY RESPONSIVE CLASSES
+   ========================================= */
+
+/* Hide on mobile */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Hide on desktop */
+@media (min-width: 769px) {
+  .hide-desktop {
+    display: none !important;
+  }
+}
+
+/* Stack on mobile — any flex container */
+@media (max-width: 768px) {
+  .stack-mobile {
+    flex-direction: column;
+  }
+}
