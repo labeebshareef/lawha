@@ -39,8 +39,11 @@ $categories  = wc_get_product_category_list( $product_id );
       loading="lazy"
     >
     <div class="product-card__overlay">
-      <a href="<?php echo esc_url( get_permalink( $product_id ) ); ?>" class="btn btn--secondary" style="font-size: 0.65rem; padding: 10px 20px;">
+      <button type="button" class="btn btn--secondary lawha-quick-view" data-product_id="<?php echo esc_attr( $product_id ); ?>" style="font-size: 0.65rem; padding: 10px 20px;">
         <?php esc_html_e( 'Quick View', 'lawha' ); ?>
+      </button>
+      <a href="<?php echo esc_url( get_permalink( $product_id ) ); ?>" class="btn btn--secondary" style="font-size: 0.65rem; padding: 10px 20px; margin-top: 8px;">
+        <?php esc_html_e( 'View Product', 'lawha' ); ?>
       </a>
     </div>
   </div>

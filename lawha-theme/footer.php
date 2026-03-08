@@ -43,10 +43,16 @@ if ( ! defined( 'ABSPATH' ) ) {
         <!-- Help -->
         <div>
           <h4 class="footer__heading"><?php esc_html_e( 'Help', 'lawha' ); ?></h4>
-          <a href="#" class="footer__link"><?php esc_html_e( 'Shipping & Returns', 'lawha' ); ?></a>
-          <a href="#" class="footer__link"><?php esc_html_e( 'Size Guide', 'lawha' ); ?></a>
+          <?php
+          $shipping_page = get_page_by_path( 'shipping-policy' );
+          $size_page     = get_page_by_path( 'size-guide' );
+          $faq_page      = get_page_by_path( 'faq' );
+          $returns_page  = get_page_by_path( 'returns' );
+          ?>
+          <a href="<?php echo $shipping_page ? esc_url( get_permalink( $shipping_page ) ) : '#'; ?>" class="footer__link"><?php esc_html_e( 'Shipping & Returns', 'lawha' ); ?></a>
+          <a href="<?php echo $size_page ? esc_url( get_permalink( $size_page ) ) : '#'; ?>" class="footer__link"><?php esc_html_e( 'Size Guide', 'lawha' ); ?></a>
           <a href="#" class="footer__link"><?php esc_html_e( 'Care Instructions', 'lawha' ); ?></a>
-          <a href="#" class="footer__link"><?php esc_html_e( 'FAQ', 'lawha' ); ?></a>
+          <a href="<?php echo $faq_page ? esc_url( get_permalink( $faq_page ) ) : '#'; ?>" class="footer__link"><?php esc_html_e( 'FAQ', 'lawha' ); ?></a>
         </div>
 
         <!-- Contact -->
@@ -74,6 +80,51 @@ if ( ! defined( 'ABSPATH' ) ) {
       </div>
     </div>
   </footer>
+
+  <?php if ( class_exists( 'WooCommerce' ) ) : ?>
+  <!-- QUICK VIEW MODAL -->
+  <div class="lawha-quickview" aria-hidden="true" role="dialog">
+    <div class="lawha-quickview__overlay"></div>
+    <div class="lawha-quickview__panel">
+      <button class="lawha-quickview__close" aria-label="<?php esc_attr_e( 'Close', 'lawha' ); ?>">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+      <div class="lawha-quickview__loader">
+        <div class="lawha-quickview__spinner"></div>
+      </div>
+      <div class="lawha-quickview__content"></div>
+    </div>
+  </div>
+
+  <!-- MINI CART DRAWER -->
+  <div class="lawha-minicart" aria-hidden="true">
+    <div class="lawha-minicart__overlay"></div>
+    <div class="lawha-minicart__panel">
+      <div class="lawha-minicart__header">
+        <h3 class="lawha-minicart__title"><?php esc_html_e( 'Your Cart', 'lawha' ); ?></h3>
+        <button class="lawha-minicart__close" aria-label="<?php esc_attr_e( 'Close cart', 'lawha' ); ?>">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="lawha-minicart__body">
+        <?php lawha_render_mini_cart_items(); ?>
+      </div>
+      <div class="lawha-minicart__footer"<?php echo WC()->cart->get_cart_contents_count() > 0 ? '' : ' style="display:none"'; ?>>
+        <div class="lawha-minicart__subtotal">
+          <span><?php esc_html_e( 'Subtotal', 'lawha' ); ?></span>
+          <span class="lawha-minicart__subtotal-amount"><?php echo wp_kses_post( WC()->cart->get_cart_subtotal() ); ?></span>
+        </div>
+        <a href="<?php echo esc_url( wc_get_cart_url() ); ?>" class="btn btn--outline" style="width:100%;margin-bottom:var(--space-3);">
+          <?php esc_html_e( 'View Cart', 'lawha' ); ?>
+        </a>
+        <a href="<?php echo esc_url( wc_get_checkout_url() ); ?>" class="btn btn--primary" style="width:100%;">
+          <?php esc_html_e( 'Checkout', 'lawha' ); ?>
+          <span class="btn__arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <?php wp_footer(); ?>
 </body>

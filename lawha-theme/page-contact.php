@@ -85,11 +85,42 @@ get_header();
           <p class="overline" style="margin-bottom: var(--space-4);"><?php esc_html_e( 'Send a Message', 'lawha' ); ?></p>
           <h3 style="margin-bottom: var(--space-5);"><?php esc_html_e( "We'd Love to Hear From You", 'lawha' ); ?></h3>
           <p style="margin-bottom: var(--space-6);"><?php esc_html_e( 'Have a question, want to collaborate, or simply want to say hello? Fill out the form and our team will get back to you shortly.', 'lawha' ); ?></p>
-          <form id="contactForm" method="post">
+          <form id="contactForm" method="post" action="">
             <?php wp_nonce_field( 'lawha_contact_form', 'lawha_nonce' ); ?>
+            <input type="hidden" name="lawha_contact_submit" value="1">
+
+            <?php
+            // Display success message
+            $sid = lawha_visitor_key();
+            $success = get_transient( 'lawha_contact_success_' . $sid );
+            $errors  = get_transient( 'lawha_contact_errors_' . $sid );
+            $data    = get_transient( 'lawha_contact_data_' . $sid );
+
+            if ( $success ) :
+                delete_transient( 'lawha_contact_success_' . $sid );
+                ?>
+                <div class="lawha-form-success">
+                  <?php esc_html_e( 'Thank you! Your message has been sent successfully. We\'ll get back to you shortly.', 'lawha' ); ?>
+                </div>
+            <?php
+            endif;
+
+            if ( $errors ) :
+                delete_transient( 'lawha_contact_errors_' . $sid );
+                delete_transient( 'lawha_contact_data_' . $sid );
+                ?>
+                <div class="lawha-form-errors">
+                  <ul>
+                    <?php foreach ( $errors as $error ) : ?>
+                      <li><?php echo esc_html( $error ); ?></li>
+                    <?php endforeach; ?>
+                  </ul>
+                </div>
+            <?php endif; ?>
+
             <div class="form-group">
               <label for="name" class="form-label"><?php esc_html_e( 'Name', 'lawha' ); ?></label>
-              <input type="text" id="name" name="name" class="form-input" placeholder="<?php esc_attr_e( 'Your full name', 'lawha' ); ?>" required>
+              <input type="text" id="name" name="name" class="form-input" placeholder="<?php esc_attr_e( 'Your full name', 'lawha' ); ?>" value="<?php echo isset( $data['name'] ) ? esc_attr( $data['name'] ) : ''; ?>" required>
             </div>
             <div class="form-group">
               <label for="email" class="form-label"><?php esc_html_e( 'Email', 'lawha' ); ?></label>
