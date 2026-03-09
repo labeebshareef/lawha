@@ -704,6 +704,106 @@ add_action( 'init', 'lawha_disable_emojis' );
 
 
 /* =========================================
+   MANDATORY PHONE ON REGISTRATION
+   ========================================= */
+
+/**
+ * Validate that a phone number is provided during WooCommerce registration.
+ *
+ * @param string   $username  Username.
+ * @param string   $email     Email.
+ * @param WP_Error $errors    Validation errors.
+ */
+function lawha_validate_registration_phone( $username, $email, $errors ) {
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WC handles nonce
+    $phone = isset( $_POST['lawha_reg_phone'] ) ? sanitize_text_field( wp_unslash( $_POST['lawha_reg_phone'] ) ) : '';
+
+    if ( empty( $phone ) ) {
+        $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: Phone number is required.', 'lawha' ) );
+        return;
+    }
+
+    // Basic E.164-ish validation: must start with + and have 8-15 digits after it.
+    $digits_only = preg_replace( '/[^\d]/', '', $phone );
+    if ( strlen( $digits_only ) < 8 || strlen( $digits_only ) > 15 ) {
+        $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: Please enter a valid phone number with country code (e.g. +966 5XX XXX XXXX).', 'lawha' ) );
+        return;
+    }
+
+    // Check for duplicate phone number.
+    $normalized = lawha_normalize_phone( $phone );
+    $existing   = get_users( array(
+        'meta_key'   => 'billing_phone',
+        'meta_value' => $normalized,
+        'number'     => 1,
+        'fields'     => 'ID',
+    ) );
+    if ( ! empty( $existing ) ) {
+        $existing_wfpl = get_users( array(
+            'meta_key'   => 'wfpl_phone',
+            'meta_value' => $normalized,
+            'number'     => 1,
+            'fields'     => 'ID',
+        ) );
+        if ( ! empty( $existing ) || ! empty( $existing_wfpl ) ) {
+            $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: An account with this phone number already exists. Please log in instead.', 'lawha' ) );
+        }
+    }
+}
+add_action( 'woocommerce_register_post', 'lawha_validate_registration_phone', 10, 3 );
+
+/**
+ * Save phone number to user meta after successful WooCommerce registration.
+ *
+ * @param int $customer_id New customer ID.
+ */
+function lawha_save_registration_phone( $customer_id ) {
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WC handles nonce
+    if ( empty( $_POST['lawha_reg_phone'] ) ) {
+        return;
+    }
+
+    $phone      = sanitize_text_field( wp_unslash( $_POST['lawha_reg_phone'] ) );
+    $normalized = lawha_normalize_phone( $phone );
+
+    update_user_meta( $customer_id, 'billing_phone', $normalized );
+    update_user_meta( $customer_id, 'wfpl_phone', $normalized );
+}
+add_action( 'woocommerce_created_customer', 'lawha_save_registration_phone', 10, 1 );
+
+/**
+ * Normalize a phone number to E.164 format.
+ *
+ * @param  string $phone Raw phone input.
+ * @return string        Normalized E.164 phone.
+ */
+function lawha_normalize_phone( $phone ) {
+    $has_plus = ( substr( trim( $phone ), 0, 1 ) === '+' );
+    $digits   = preg_replace( '/[^\d]/', '', $phone );
+
+    if ( empty( $digits ) ) {
+        return $phone;
+    }
+
+    if ( $has_plus ) {
+        return '+' . $digits;
+    }
+
+    // International prefix 00 → +
+    if ( substr( $digits, 0, 2 ) === '00' ) {
+        return '+' . substr( $digits, 2 );
+    }
+
+    // Saudi local: 05xxxxxxxx → +9665xxxxxxxx
+    if ( substr( $digits, 0, 1 ) === '0' && strlen( $digits ) === 10 ) {
+        return '+966' . substr( $digits, 1 );
+    }
+
+    return '+' . $digits;
+}
+
+
+/* =========================================
    PHONE-FIRST AUTHENTICATION ASSETS
    ========================================= */
 

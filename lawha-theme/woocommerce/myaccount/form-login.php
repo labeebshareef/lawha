@@ -209,6 +209,12 @@ do_action( 'woocommerce_before_customer_login_form' );
         <input type="email" class="form-input" name="email" id="reg_email" autocomplete="email" value="<?php echo ( ! empty( $_POST['email'] ) ) ? esc_attr( wp_unslash( $_POST['email'] ) ) : ''; ?>" required />
       </div>
 
+      <div class="form-group">
+        <label for="reg_phone" class="form-label"><?php esc_html_e( 'Phone Number', 'lawha' ); ?>&nbsp;<span class="required">*</span></label>
+        <input type="tel" class="form-input" name="lawha_reg_phone" id="reg_phone" autocomplete="tel" value="<?php echo ( ! empty( $_POST['lawha_reg_phone'] ) ) ? esc_attr( wp_unslash( $_POST['lawha_reg_phone'] ) ) : ''; ?>" required placeholder="+966 5XX XXX XXXX" />
+        <span class="form-hint" style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:var(--space-1);display:block;"><?php esc_html_e( 'Include country code, e.g. +966', 'lawha' ); ?></span>
+      </div>
+
       <?php if ( 'no' === get_option( 'woocommerce_registration_generate_password' ) ) : ?>
         <div class="form-group">
           <label for="reg_password" class="form-label"><?php esc_html_e( 'Password', 'lawha' ); ?>&nbsp;<span class="required">*</span></label>
