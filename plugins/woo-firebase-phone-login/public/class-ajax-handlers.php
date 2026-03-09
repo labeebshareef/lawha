@@ -53,6 +53,7 @@ class Ajax_Handlers {
         $result = Auth_Controller::authenticate( $token );
 
         if ( is_wp_error( $result ) ) {
+            Helpers::log_error( $result );
             $status = $result->get_error_data( 'status' ) ?? 400;
             wp_send_json_error( array(
                 'message' => $result->get_error_message(),

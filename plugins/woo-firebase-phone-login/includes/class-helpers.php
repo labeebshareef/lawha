@@ -17,6 +17,25 @@ defined( 'ABSPATH' ) || exit;
 class Helpers {
 
     /*--------------------------------------------------------------
+     * Feature defaults — must match activation defaults.
+     *------------------------------------------------------------*/
+
+    /**
+     * Default values for all feature toggles.
+     * These are the same values set during plugin activation so that
+     * the plugin works correctly even if the activation hook did not run.
+     *
+     * @var array<string,string>
+     */
+    private static $feature_defaults = array(
+        'enable_login'          => 'yes',
+        'enable_registration'   => 'yes',
+        'enable_checkout_login' => 'yes',
+        'auto_create_account'   => 'yes',
+        'enable_popup'          => 'no',
+    );
+
+    /*--------------------------------------------------------------
      * Option helpers
      *------------------------------------------------------------*/
 
@@ -34,11 +53,47 @@ class Helpers {
     /**
      * Check whether a feature toggle is enabled.
      *
+     * Uses the activation-time default if the option is not in the database,
+     * so behaviour is consistent regardless of how the plugin was installed.
+     *
      * @param string $key Option key (without prefix).
      * @return bool
      */
     public static function is_feature_enabled( $key ) {
-        return 'yes' === self::get_option( $key, 'no' );
+        $default = isset( self::$feature_defaults[ $key ] ) ? self::$feature_defaults[ $key ] : 'no';
+        return 'yes' === self::get_option( $key, $default );
+    }
+
+    /*--------------------------------------------------------------
+     * Logging
+     *------------------------------------------------------------*/
+
+    /**
+     * Log a debug message when WP_DEBUG is enabled.
+     *
+     * @param string $message  Human-readable message.
+     * @param string $context  Optional error code / context tag.
+     */
+    public static function log( $message, $context = '' ) {
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            $prefix = '[WFPL]';
+            if ( $context ) {
+                $prefix .= ' [' . $context . ']';
+            }
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            error_log( $prefix . ' ' . $message );
+        }
+    }
+
+    /**
+     * Log a WP_Error object.
+     *
+     * @param \WP_Error $error WP_Error instance.
+     */
+    public static function log_error( $error ) {
+        if ( is_wp_error( $error ) ) {
+            self::log( $error->get_error_message(), $error->get_error_code() );
+        }
     }
 
     /*--------------------------------------------------------------

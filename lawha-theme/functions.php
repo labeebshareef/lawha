@@ -319,7 +319,7 @@ if ( class_exists( 'WooCommerce' ) ) {
             LAWHA_URI . '/js/woocommerce.js',
             array(),
             LAWHA_VERSION,
-            array( 'strategy' => 'defer', 'in_footer' => true )
+            true
         );
 
         wp_localize_script( 'lawha-woocommerce', 'lawhaWC', array(

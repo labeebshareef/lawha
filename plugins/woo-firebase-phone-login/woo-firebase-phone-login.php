@@ -135,12 +135,16 @@ final class WFPL_Plugin {
      * Constructor — hooks everything.
      */
     private function __construct() {
-        $this->check_dependencies();
+        if ( ! $this->check_dependencies() ) {
+            return;
+        }
         $this->init_hooks();
     }
 
     /**
      * Bail early if WooCommerce is not active.
+     *
+     * @return bool True if all dependencies are met.
      */
     private function check_dependencies() {
         if ( ! class_exists( 'WooCommerce' ) ) {
@@ -149,8 +153,9 @@ final class WFPL_Plugin {
                 esc_html_e( 'WooCommerce Firebase Phone Login requires WooCommerce to be installed and active.', 'woo-firebase-phone-login' );
                 echo '</p></div>';
             });
-            return;
+            return false;
         }
+        return true;
     }
 
     /**
@@ -176,15 +181,14 @@ final class WFPL_Plugin {
      * Initialise all modules.
      */
     public function init_modules() {
-        // Core.
-        new \WFPL\Helpers();
-        new \WFPL\Firebase_Auth();
-        new \WFPL\User_Handler();
-        new \WFPL\Auth_Controller();
+        // Core (static utility classes — no need to instantiate).
+        // \WFPL\Helpers, \WFPL\Firebase_Auth, \WFPL\Auth_Controller are all static.
+        // \WFPL\User_Handler is static.
 
         // Admin.
         if ( is_admin() ) {
             new \WFPL\Admin\Settings_Page();
+            $this->maybe_show_firebase_notice();
         }
 
         // Frontend.
@@ -195,6 +199,24 @@ final class WFPL_Plugin {
 
         // REST API.
         new \WFPL\API\Rest_API();
+    }
+
+    /**
+     * Show an admin notice when Firebase credentials are missing.
+     */
+    private function maybe_show_firebase_notice() {
+        if ( \WFPL\Helpers::is_firebase_configured() ) {
+            return;
+        }
+
+        add_action( 'admin_notices', function () {
+            $url = admin_url( 'admin.php?page=wc-settings&tab=wfpl' );
+            echo '<div class="notice notice-warning is-dismissible"><p>';
+            echo '<strong>' . esc_html__( 'Firebase Phone Login:', 'woo-firebase-phone-login' ) . '</strong> ';
+            echo esc_html__( 'Firebase API keys are not configured. Phone login will not work until you add your Firebase credentials.', 'woo-firebase-phone-login' );
+            echo ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'Configure now &rarr;', 'woo-firebase-phone-login' ) . '</a>';
+            echo '</p></div>';
+        });
     }
 }
 

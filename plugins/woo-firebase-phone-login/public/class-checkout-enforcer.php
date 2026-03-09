@@ -62,15 +62,16 @@ class Checkout_Enforcer {
             }
         }
 
-        // Check session flag.
+        // Check session flag (server-side only — cannot be spoofed).
         if ( $this->is_phone_verified() ) {
             return;
         }
 
-        // Check POST hidden field as fallback.
-        if ( ! empty( $_POST['wfpl_phone_verified'] ) && 'yes' === sanitize_text_field( wp_unslash( $_POST['wfpl_phone_verified'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-            return;
-        }
+        // NOTE: We intentionally do NOT trust the hidden POST field
+        // (wfpl_phone_verified) because it can be forged by the client.
+        // Only the WooCommerce server-side session is trusted.
+
+        Helpers::log( 'Checkout blocked — phone not verified.', 'checkout_enforcer' );
 
         wc_add_notice(
             __( 'Please verify your phone number before placing the order.', 'woo-firebase-phone-login' ),

@@ -37,13 +37,31 @@
          */
         init() {
             if (!wfpl_config || !wfpl_config.firebase || !wfpl_config.firebase.apiKey) {
-                console.warn('[WFPL] Firebase not configured.');
+                console.warn('[WFPL] Firebase not configured — phone login is disabled.');
+                // Hide all login containers so the user doesn’t see a broken form.
+                $('.wfpl-login-container').hide();
+                $('#wfpl-popup-fab').hide();
+                return;
+            }
+
+            // Guard: Firebase SDK must be loaded (CDN may have been blocked).
+            if (typeof firebase === 'undefined' || !firebase.auth) {
+                console.error('[WFPL] Firebase SDK not loaded. Check CDN connectivity.');
+                $('.wfpl-login-container').hide();
+                $('#wfpl-popup-fab').hide();
                 return;
             }
 
             // Initialize Firebase (compat SDK).
-            if (!firebase.apps.length) {
-                firebase.initializeApp(wfpl_config.firebase);
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(wfpl_config.firebase);
+                }
+            } catch (err) {
+                console.error('[WFPL] Firebase initialization failed:', err);
+                $('.wfpl-login-container').hide();
+                $('#wfpl-popup-fab').hide();
+                return;
             }
 
             // Set language to browser language for reCAPTCHA.
@@ -63,17 +81,28 @@
          * @returns {Promise<firebase.auth.ConfirmationResult>}
          */
         async sendOTP(phone, recaptchaEl) {
+            // Safety: ensure Firebase Auth is available.
+            if (typeof firebase === 'undefined' || !firebase.auth) {
+                throw new Error('Firebase Auth SDK is not loaded.');
+            }
+
             if (!state.recaptchaVerifier) {
-                state.recaptchaVerifier = new firebase.auth.RecaptchaVerifier(recaptchaEl, {
-                    size: 'invisible',
-                    callback() { /* solved */ },
-                    'expired-callback'() {
-                        state.recaptchaVerifier.render().then(widgetId => {
-                            // eslint-disable-next-line no-undef
-                            grecaptcha.reset(widgetId);
-                        });
-                    },
-                });
+                try {
+                    state.recaptchaVerifier = new firebase.auth.RecaptchaVerifier(recaptchaEl, {
+                        size: 'invisible',
+                        callback() { /* solved */ },
+                        'expired-callback'() {
+                            state.recaptchaVerifier.render().then(widgetId => {
+                                // eslint-disable-next-line no-undef
+                                grecaptcha.reset(widgetId);
+                            });
+                        },
+                    });
+                } catch (err) {
+                    console.error('[WFPL] RecaptchaVerifier failed:', err);
+                    state.recaptchaVerifier = null;
+                    throw err;
+                }
             }
 
             const confirmation = await firebase.auth().signInWithPhoneNumber(phone, state.recaptchaVerifier);

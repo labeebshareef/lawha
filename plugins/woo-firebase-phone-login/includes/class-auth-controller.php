@@ -24,13 +24,16 @@ class Auth_Controller {
         // 1. Verify token.
         $payload = Firebase_Auth::verify_id_token( $firebase_token );
         if ( is_wp_error( $payload ) ) {
+            Helpers::log_error( $payload );
             return $payload;
         }
 
         // 2. Extract phone number.
         $phone = Firebase_Auth::get_phone_from_payload( $payload );
         if ( empty( $phone ) ) {
-            return new \WP_Error( 'wfpl_no_phone', __( 'No phone number in token.', 'woo-firebase-phone-login' ) );
+            $error = new \WP_Error( 'wfpl_no_phone', __( 'No phone number in token.', 'woo-firebase-phone-login' ) );
+            Helpers::log_error( $error );
+            return $error;
         }
 
         $phone = Helpers::sanitize_phone( $phone );
@@ -49,6 +52,7 @@ class Auth_Controller {
         // 4. Login or create user.
         $result = User_Handler::login_or_create( $phone );
         if ( is_wp_error( $result ) ) {
+            Helpers::log_error( $result );
             return $result;
         }
 
