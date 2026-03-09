@@ -191,6 +191,7 @@ final class WFPL_Plugin {
         new \WFPL\Frontend\Login_UI();
         new \WFPL\Frontend\Shortcodes();
         new \WFPL\Frontend\Ajax_Handlers();
+        new \WFPL\Frontend\Checkout_Enforcer();
 
         // REST API.
         new \WFPL\API\Rest_API();

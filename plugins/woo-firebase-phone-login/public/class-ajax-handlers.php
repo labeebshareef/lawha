@@ -60,11 +60,18 @@ class Ajax_Handlers {
             ), $status );
         }
 
+        // Set the WC session flag for checkout enforcement.
+        if ( function_exists( 'WC' ) && WC()->session ) {
+            WC()->session->set( 'wfpl_phone_verified', $result['phone'] ?? '' );
+        }
+
         wp_send_json_success( array(
-            'message'      => __( 'Login successful!', 'woo-firebase-phone-login' ),
-            'user_id'      => $result['user_id'],
-            'created'      => $result['created'],
-            'redirect_url' => $this->get_redirect_url(),
+            'message'        => __( 'Login successful!', 'woo-firebase-phone-login' ),
+            'user_id'        => $result['user_id'],
+            'created'        => $result['created'],
+            'phone'          => $result['phone'] ?? '',
+            'phone_verified' => true,
+            'redirect_url'   => $this->get_redirect_url(),
         ) );
     }
 
