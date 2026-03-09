@@ -1,0 +1,489 @@
+/**
+ * WooCommerce Firebase Phone Login — Premium UI Styles
+ *
+ * Mobile-first, modern design with smooth animations.
+ *
+ * @package WFPL
+ */
+
+/* ================================================================
+ *  CSS Custom Properties
+ * ============================================================= */
+:root {
+    --wfpl-primary:        #6c5ce7;
+    --wfpl-primary-hover:  #5a4bd1;
+    --wfpl-primary-light:  rgba(108, 92, 231, 0.08);
+    --wfpl-success:        #00b894;
+    --wfpl-success-light:  rgba(0, 184, 148, 0.08);
+    --wfpl-error:          #e17055;
+    --wfpl-error-light:    rgba(225, 112, 85, 0.08);
+    --wfpl-info:           #0984e3;
+    --wfpl-info-light:     rgba(9, 132, 227, 0.08);
+    --wfpl-text:           #2d3436;
+    --wfpl-text-muted:     #636e72;
+    --wfpl-bg:             #ffffff;
+    --wfpl-bg-secondary:   #f8f9fa;
+    --wfpl-border:         #e9ecef;
+    --wfpl-radius:         12px;
+    --wfpl-radius-sm:      8px;
+    --wfpl-shadow:         0 4px 24px rgba(0, 0, 0, 0.06);
+    --wfpl-shadow-lg:      0 12px 48px rgba(0, 0, 0, 0.12);
+    --wfpl-transition:     0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --wfpl-font:           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+/* ================================================================
+ *  Login Container
+ * ============================================================= */
+.wfpl-login-container {
+    font-family: var(--wfpl-font);
+    max-width: 400px;
+    margin: 0 auto 2rem;
+    background: var(--wfpl-bg);
+    border-radius: var(--wfpl-radius);
+    box-shadow: var(--wfpl-shadow);
+    border: 1px solid var(--wfpl-border);
+    overflow: hidden;
+    position: relative;
+}
+
+.wfpl-login-container *,
+.wfpl-login-container *::before,
+.wfpl-login-container *::after {
+    box-sizing: border-box;
+}
+
+/* ================================================================
+ *  Steps
+ * ============================================================= */
+.wfpl-step {
+    animation: wfplFadeSlideIn 0.35s ease forwards;
+}
+
+@keyframes wfplFadeSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ================================================================
+ *  Form Header
+ * ============================================================= */
+.wfpl-form-header {
+    text-align: center;
+    padding: 2rem 2rem 0.5rem;
+}
+
+.wfpl-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--wfpl-primary-light);
+    color: var(--wfpl-primary);
+    margin-bottom: 1rem;
+    transition: transform var(--wfpl-transition);
+}
+
+.wfpl-icon:hover {
+    transform: scale(1.05);
+}
+
+.wfpl-icon-shield {
+    background: var(--wfpl-info-light);
+    color: var(--wfpl-info);
+}
+
+.wfpl-icon-success {
+    background: var(--wfpl-success-light);
+    color: var(--wfpl-success);
+    animation: wfplPulse 0.6s ease;
+}
+
+@keyframes wfplPulse {
+    0%   { transform: scale(0.8); opacity: 0; }
+    50%  { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.wfpl-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--wfpl-text);
+    margin: 0 0 0.25rem;
+    letter-spacing: -0.01em;
+}
+
+.wfpl-subtitle {
+    font-size: 0.875rem;
+    color: var(--wfpl-text-muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ================================================================
+ *  Form Body
+ * ============================================================= */
+.wfpl-form-body {
+    padding: 1.25rem 2rem 2rem;
+}
+
+/* ================================================================
+ *  Phone Input (intl-tel-input overrides)
+ * ============================================================= */
+.wfpl-field {
+    margin-bottom: 1rem;
+}
+
+.wfpl-field .iti {
+    width: 100%;
+}
+
+.wfpl-phone-input,
+.iti .wfpl-phone-input {
+    width: 100%;
+    height: 48px;
+    padding: 0 1rem;
+    font-size: 1rem;
+    border: 1.5px solid var(--wfpl-border);
+    border-radius: var(--wfpl-radius-sm);
+    background: var(--wfpl-bg-secondary);
+    color: var(--wfpl-text);
+    outline: none;
+    transition: border-color var(--wfpl-transition), box-shadow var(--wfpl-transition);
+}
+
+.wfpl-phone-input:focus {
+    border-color: var(--wfpl-primary);
+    box-shadow: 0 0 0 3px var(--wfpl-primary-light);
+    background: var(--wfpl-bg);
+}
+
+/* ================================================================
+ *  OTP Digit Inputs
+ * ============================================================= */
+.wfpl-otp-inputs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+}
+
+.wfpl-otp-digit {
+    width: 48px;
+    height: 56px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    border: 1.5px solid var(--wfpl-border);
+    border-radius: var(--wfpl-radius-sm);
+    background: var(--wfpl-bg-secondary);
+    color: var(--wfpl-text);
+    outline: none;
+    transition: border-color var(--wfpl-transition), box-shadow var(--wfpl-transition), transform var(--wfpl-transition);
+    caret-color: var(--wfpl-primary);
+}
+
+.wfpl-otp-digit:focus {
+    border-color: var(--wfpl-primary);
+    box-shadow: 0 0 0 3px var(--wfpl-primary-light);
+    background: var(--wfpl-bg);
+    transform: translateY(-2px);
+}
+
+/* ================================================================
+ *  Buttons
+ * ============================================================= */
+.wfpl-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 48px;
+    padding: 0 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    font-family: var(--wfpl-font);
+    border: none;
+    border-radius: var(--wfpl-radius-sm);
+    cursor: pointer;
+    transition: background var(--wfpl-transition), transform var(--wfpl-transition), box-shadow var(--wfpl-transition);
+}
+
+.wfpl-btn:active {
+    transform: scale(0.98);
+}
+
+.wfpl-btn-primary {
+    background: var(--wfpl-primary);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(108, 92, 231, 0.25);
+}
+
+.wfpl-btn-primary:hover {
+    background: var(--wfpl-primary-hover);
+    box-shadow: 0 4px 16px rgba(108, 92, 231, 0.35);
+}
+
+.wfpl-btn-primary:disabled,
+.wfpl-btn-primary.wfpl-loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Spinner */
+.wfpl-spinner {
+    animation: wfplSpin 0.85s linear infinite;
+}
+
+@keyframes wfplSpin {
+    100% { transform: rotate(360deg); }
+}
+
+.wfpl-btn-loader {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ================================================================
+ *  Resend / Back
+ * ============================================================= */
+.wfpl-resend-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    font-size: 0.8125rem;
+    color: var(--wfpl-text-muted);
+}
+
+.wfpl-timer {
+    font-variant-numeric: tabular-nums;
+}
+
+.wfpl-resend-btn {
+    background: none;
+    border: none;
+    color: var(--wfpl-primary);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-family: var(--wfpl-font);
+    padding: 0;
+    transition: color var(--wfpl-transition);
+}
+
+.wfpl-resend-btn:hover {
+    color: var(--wfpl-primary-hover);
+    text-decoration: underline;
+}
+
+.wfpl-back-btn {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--wfpl-text-muted);
+    font-size: 0.8125rem;
+    font-family: var(--wfpl-font);
+    cursor: pointer;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    transition: color var(--wfpl-transition);
+}
+
+.wfpl-back-btn:hover {
+    color: var(--wfpl-primary);
+}
+
+/* ================================================================
+ *  Messages
+ * ============================================================= */
+.wfpl-message {
+    margin: 0 2rem 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--wfpl-radius-sm);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    font-weight: 500;
+    animation: wfplFadeSlideIn 0.25s ease forwards;
+}
+
+.wfpl-msg-success {
+    background: var(--wfpl-success-light);
+    color: var(--wfpl-success);
+    border: 1px solid rgba(0, 184, 148, 0.2);
+}
+
+.wfpl-msg-error {
+    background: var(--wfpl-error-light);
+    color: var(--wfpl-error);
+    border: 1px solid rgba(225, 112, 85, 0.2);
+}
+
+.wfpl-msg-info {
+    background: var(--wfpl-info-light);
+    color: var(--wfpl-info);
+    border: 1px solid rgba(9, 132, 227, 0.2);
+}
+
+/* ================================================================
+ *  reCAPTCHA badge (Firebase invisible)
+ * ============================================================= */
+.wfpl-recaptcha {
+    margin-bottom: 0.5rem;
+}
+
+/* ================================================================
+ *  Popup Modal
+ * ============================================================= */
+.wfpl-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: wfplFadeIn 0.2s ease;
+}
+
+@keyframes wfplFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.wfpl-modal {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    background: var(--wfpl-bg);
+    border-radius: var(--wfpl-radius);
+    box-shadow: var(--wfpl-shadow-lg);
+    animation: wfplScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes wfplScaleIn {
+    from {
+        transform: scale(0.92);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.wfpl-modal .wfpl-login-container {
+    box-shadow: none;
+    border: none;
+    margin: 0;
+}
+
+.wfpl-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--wfpl-bg-secondary);
+    color: var(--wfpl-text-muted);
+    font-size: 1.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--wfpl-transition), color var(--wfpl-transition);
+}
+
+.wfpl-modal-close:hover {
+    background: var(--wfpl-error-light);
+    color: var(--wfpl-error);
+}
+
+/* ================================================================
+ *  Checkout wrapper
+ * ============================================================= */
+#wfpl-checkout-login-wrapper {
+    max-width: 480px;
+    margin-bottom: 2rem;
+}
+
+#wfpl-checkout-login-wrapper h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--wfpl-text);
+    margin-bottom: 1rem;
+}
+
+#wfpl-checkout-login-wrapper .wfpl-login-container {
+    max-width: 100%;
+}
+
+/* ================================================================
+ *  Responsive
+ * ============================================================= */
+@media (max-width: 480px) {
+    .wfpl-form-header {
+        padding: 1.5rem 1.5rem 0.5rem;
+    }
+
+    .wfpl-form-body {
+        padding: 1rem 1.5rem 1.5rem;
+    }
+
+    .wfpl-message {
+        margin: 0 1.5rem 1rem;
+    }
+
+    .wfpl-otp-digit {
+        width: 42px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
+
+    .wfpl-otp-inputs {
+        gap: 6px;
+    }
+
+    .wfpl-icon {
+        width: 48px;
+        height: 48px;
+    }
+
+    .wfpl-icon svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .wfpl-title {
+        font-size: 1.125rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .wfpl-otp-digit {
+        width: 36px;
+        height: 46px;
+        font-size: 1.125rem;
+    }
+
+    .wfpl-otp-inputs {
+        gap: 4px;
+    }
+}
