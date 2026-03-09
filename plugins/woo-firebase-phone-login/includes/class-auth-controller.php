@@ -21,6 +21,16 @@ class Auth_Controller {
      * @return array|\WP_Error Response array on success.
      */
     public static function authenticate( $firebase_token ) {
+        // 0. Token replay protection.
+        $token_hash = hash( 'sha256', $firebase_token );
+        if ( Helpers::is_token_used( $token_hash ) ) {
+            return new \WP_Error(
+                'wfpl_token_replay',
+                __( 'This authentication token has already been used.', 'woo-firebase-phone-login' ),
+                array( 'status' => 403 )
+            );
+        }
+
         // 1. Verify token.
         $payload = Firebase_Auth::verify_id_token( $firebase_token );
         if ( is_wp_error( $payload ) ) {
@@ -49,11 +59,20 @@ class Auth_Controller {
 
         Helpers::increment_otp_counter( $phone );
 
-        // 4. Login or create user.
+        // 4. Mark token as used (prevent replay).
+        Helpers::mark_token_used( $token_hash );
+
+        // 5. Login or create user.
         $result = User_Handler::login_or_create( $phone );
         if ( is_wp_error( $result ) ) {
             Helpers::log_error( $result );
             return $result;
+        }
+
+        // 6. Store Firebase UID on user meta.
+        $firebase_uid = $payload['sub'] ?? '';
+        if ( $firebase_uid ) {
+            update_user_meta( $result['user_id'], 'wfpl_firebase_uid', $firebase_uid );
         }
 
         return array(

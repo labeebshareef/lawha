@@ -24,6 +24,12 @@ class Login_UI {
             return;
         }
 
+        // Headless mode: only load JS SDK + localized config, skip all UI rendering.
+        if ( Helpers::is_feature_enabled( 'headless_mode' ) ) {
+            add_action( 'wp_enqueue_scripts', array( $this, 'register_sdk_only' ) );
+            return;
+        }
+
         // Enqueue assets.
         add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 
@@ -39,6 +45,98 @@ class Login_UI {
         if ( Helpers::is_feature_enabled( 'enable_popup' ) ) {
             add_action( 'wp_footer', array( $this, 'render_popup_trigger' ) );
             add_action( 'wp_footer', array( $this, 'render_popup_modal' ) );
+        }
+    }
+
+    /*--------------------------------------------------------------
+     * SDK-only mode (headless)
+     *------------------------------------------------------------*/
+
+    /**
+     * In headless mode, only load the JS SDK and config —
+     * the theme provides its own UI.
+     */
+    public function register_sdk_only() {
+        if ( ! $this->should_load_assets() ) {
+            return;
+        }
+
+        // intl-tel-input CSS (CDN) — theme may still want it.
+        wp_enqueue_style(
+            'intl-tel-input',
+            'https://cdn.jsdelivr.net/npm/intl-tel-input@21.1.1/build/css/intlTelInput.min.css',
+            array(),
+            '21.1.1'
+        );
+
+        // Firebase JS SDK (CDN — modular compat bundle).
+        wp_enqueue_script(
+            'firebase-app',
+            'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
+            array(),
+            '10.12.0',
+            true
+        );
+
+        wp_enqueue_script(
+            'firebase-auth',
+            'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
+            array( 'firebase-app' ),
+            '10.12.0',
+            true
+        );
+
+        // intl-tel-input JS.
+        wp_enqueue_script(
+            'intl-tel-input',
+            'https://cdn.jsdelivr.net/npm/intl-tel-input@21.1.1/build/js/intlTelInput.min.js',
+            array(),
+            '21.1.1',
+            true
+        );
+
+        // Plugin main JS (SDK: WFPL.sendOTP, WFPL.verifyOTP, WFPL.login).
+        wp_enqueue_script(
+            'wfpl-auth',
+            WFPL_PLUGIN_URL . 'assets/js/firebase-auth.js',
+            array( 'jquery', 'firebase-app', 'firebase-auth', 'intl-tel-input' ),
+            WFPL_VERSION,
+            true
+        );
+
+        // Localize script with config — theme JS reads wfpl_config.
+        wp_localize_script( 'wfpl-auth', 'wfpl_config', array(
+            'ajax_url'        => admin_url( 'admin-ajax.php' ),
+            'rest_url'        => esc_url_raw( rest_url( 'wfpl/v1/' ) ),
+            'nonce'           => Helpers::create_nonce(),
+            'rest_nonce'      => wp_create_nonce( 'wp_rest' ),
+            'firebase'        => Helpers::get_firebase_config(),
+            'headless'        => true,
+            'otp_expiration'  => absint( Helpers::get_option( 'otp_expiration', 300 ) ),
+            'i18n'            => array(
+                'sending'        => __( 'Sending OTP…', 'woo-firebase-phone-login' ),
+                'verifying'      => __( 'Verifying…', 'woo-firebase-phone-login' ),
+                'success'        => __( 'Login successful! Redirecting…', 'woo-firebase-phone-login' ),
+                'invalid_phone'  => __( 'Please enter a valid phone number.', 'woo-firebase-phone-login' ),
+                'otp_sent'       => __( 'OTP sent! Check your phone.', 'woo-firebase-phone-login' ),
+                'otp_failed'     => __( 'Failed to send OTP. Please try again.', 'woo-firebase-phone-login' ),
+                'verify_failed'  => __( 'Verification failed. Please try again.', 'woo-firebase-phone-login' ),
+                'resend'         => __( 'Resend OTP', 'woo-firebase-phone-login' ),
+                'resend_in'      => __( 'Resend in %s s', 'woo-firebase-phone-login' ),
+                'enter_otp'      => __( 'Enter the 6-digit code', 'woo-firebase-phone-login' ),
+            ),
+            'redirect_url'    => $this->get_redirect_url(),
+        ) );
+
+        // Checkout integration script — still needed for enforcing verification.
+        if ( is_checkout() ) {
+            wp_enqueue_script(
+                'wfpl-checkout',
+                WFPL_PLUGIN_URL . 'assets/js/checkout-integration.js',
+                array( 'wfpl-auth' ),
+                WFPL_VERSION,
+                true
+            );
         }
     }
 

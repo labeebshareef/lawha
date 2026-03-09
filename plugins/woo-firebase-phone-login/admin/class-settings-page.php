@@ -123,6 +123,14 @@ class Settings_Page {
             ),
 
             array(
+                'title'   => __( 'Headless Mode', 'woo-firebase-phone-login' ),
+                'desc'    => __( 'Only expose the JS SDK (WFPL.sendOTP, WFPL.verifyOTP, WFPL.login) without rendering any plugin UI. Enable this when the theme provides its own phone login forms.', 'woo-firebase-phone-login' ),
+                'id'      => 'wfpl_headless_mode',
+                'default' => 'no',
+                'type'    => 'checkbox',
+            ),
+
+            array(
                 'type' => 'sectionend',
                 'id'   => 'wfpl_general_section',
             ),

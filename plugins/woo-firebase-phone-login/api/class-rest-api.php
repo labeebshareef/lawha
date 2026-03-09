@@ -186,12 +186,19 @@ class Rest_API {
     public function handle_check_phone( $request ) {
         $phone = $request->get_param( 'phone' );
 
-        // Don't reveal registration status to prevent user enumeration (if desired)
-        // For now, we return it since the API is meant for headless apps.
+        /**
+         * Filter whether to reveal phone registration status.
+         * Set to false to prevent user enumeration attacks.
+         *
+         * @param bool   $reveal Whether to reveal registration status.
+         * @param string $phone  E.164 phone number.
+         */
+        $reveal = apply_filters( 'wfpl_reveal_phone_status', true, $phone );
+
         return new \WP_REST_Response( array(
             'success'    => true,
             'phone'      => $phone,
-            'registered' => User_Handler::is_phone_registered( $phone ),
+            'registered' => $reveal ? User_Handler::is_phone_registered( $phone ) : true,
         ), 200 );
     }
 

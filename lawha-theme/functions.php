@@ -701,3 +701,159 @@ function lawha_disable_emojis() {
     remove_action( 'wp_print_styles', 'print_emoji_styles' );
 }
 add_action( 'init', 'lawha_disable_emojis' );
+
+
+/* =========================================
+   PHONE-FIRST AUTHENTICATION ASSETS
+   ========================================= */
+
+/**
+ * Enqueue phone-auth.js on account & checkout pages
+ * when the WFPL plugin is active in headless mode.
+ */
+function lawha_enqueue_phone_auth() {
+    if ( ! function_exists( 'wfpl_get_option' ) ) {
+        return;
+    }
+
+    // Only load when Firebase is configured.
+    $api_key    = wfpl_get_option( 'firebase_api_key', '' );
+    $project_id = wfpl_get_option( 'firebase_project_id', '' );
+    if ( empty( $api_key ) || empty( $project_id ) ) {
+        return;
+    }
+
+    // Load on My Account (login/register) and checkout pages for guests.
+    $is_auth_page = ( function_exists( 'is_account_page' ) && is_account_page() )
+                 || ( function_exists( 'is_checkout' ) && is_checkout() );
+
+    if ( ! $is_auth_page ) {
+        return;
+    }
+
+    // The WFPL plugin (headless mode) enqueues firebase SDK + intl-tel-input
+    // as 'wfpl-auth'. Our script depends on it.
+    wp_enqueue_script(
+        'lawha-phone-auth',
+        LAWHA_URI . '/js/phone-auth.js',
+        array( 'jquery', 'wfpl-auth' ),
+        LAWHA_VERSION,
+        array( 'in_footer' => true )
+    );
+}
+add_action( 'wp_enqueue_scripts', 'lawha_enqueue_phone_auth', 20 );
+
+
+/* =========================================
+   CHECKOUT — PHONE VERIFICATION FOR GUESTS
+   ========================================= */
+
+/**
+ * Show a compact phone-verify widget above the checkout form
+ * for non-logged-in users when Firebase is configured.
+ * After verification, the checkout form reveals itself.
+ */
+function lawha_checkout_phone_gate( $checkout ) {
+    // Only for guests.
+    if ( is_user_logged_in() ) {
+        return;
+    }
+
+    // Only when Firebase is available.
+    if ( ! function_exists( 'wfpl_get_option' ) ) {
+        return;
+    }
+    $api_key    = wfpl_get_option( 'firebase_api_key', '' );
+    $project_id = wfpl_get_option( 'firebase_project_id', '' );
+    if ( empty( $api_key ) || empty( $project_id ) ) {
+        return;
+    }
+    ?>
+    <div id="lawhaCheckoutPhoneGate" class="lawha-auth" style="max-width:480px;margin:0 auto var(--space-8);">
+        <h3 class="lawha-auth__heading" style="font-size:var(--text-2xl);">
+            <?php esc_html_e( 'Verify Your Phone', 'lawha' ); ?>
+        </h3>
+        <p class="lawha-auth__subtitle">
+            <?php esc_html_e( 'Quick phone verification to proceed with checkout', 'lawha' ); ?>
+        </p>
+
+        <div id="lawhaAuthMessage" class="lawha-auth__message" role="alert" aria-live="polite" style="display:none;"></div>
+
+        <!-- Phone Input -->
+        <div id="lawhaPhoneStep" class="lawha-phone-step">
+            <div class="form-group">
+                <label for="lawha_phone" class="form-label"><?php esc_html_e( 'Phone Number', 'lawha' ); ?>&nbsp;<span class="required">*</span></label>
+                <input type="tel" class="form-input" id="lawha_phone" name="phone" autocomplete="tel" required />
+            </div>
+            <div id="lawha-recaptcha" class="lawha-recaptcha-container"></div>
+            <button type="button" id="lawhaSendOtp" class="btn btn--primary" style="width:100%;">
+                <span class="btn__text"><?php esc_html_e( 'Send Verification Code', 'lawha' ); ?></span>
+                <span class="btn__spinner lawha-spinner" style="display:none;"></span>
+                <span class="btn__arrow">→</span>
+            </button>
+        </div>
+
+        <!-- OTP Input -->
+        <div id="lawhaOtpStep" class="lawha-phone-step" style="display:none;">
+            <p class="lawha-auth__subtitle">
+                <?php esc_html_e( 'Enter the 6-digit code sent to', 'lawha' ); ?>
+                <strong id="lawhaPhoneDisplay"></strong>
+            </p>
+            <div class="lawha-otp-inputs" dir="ltr">
+                <?php for ( $i = 0; $i < 6; $i++ ) : ?>
+                    <input type="text" class="lawha-otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-idx="<?php echo $i; ?>" aria-label="<?php echo esc_attr( sprintf( 'Digit %d', $i + 1 ) ); ?>" />
+                <?php endfor; ?>
+            </div>
+            <button type="button" id="lawhaVerifyOtp" class="btn btn--primary" style="width:100%;" disabled>
+                <span class="btn__text"><?php esc_html_e( 'Verify & Continue', 'lawha' ); ?></span>
+                <span class="btn__spinner lawha-spinner" style="display:none;"></span>
+                <span class="btn__arrow">→</span>
+            </button>
+            <div class="lawha-auth__resend">
+                <span id="lawhaResendTimer" class="lawha-auth__timer"></span>
+                <button type="button" id="lawhaResendOtp" class="lawha-auth__resend-btn" style="display:none;">
+                    <?php esc_html_e( 'Resend Code', 'lawha' ); ?>
+                </button>
+            </div>
+            <button type="button" id="lawhaBackToPhone" class="lawha-auth__back-link">
+                ← <?php esc_html_e( 'Change phone number', 'lawha' ); ?>
+            </button>
+        </div>
+
+        <!-- Success -->
+        <div id="lawhaSuccessStep" class="lawha-phone-step" style="display:none;">
+            <div class="lawha-auth__success-icon">✓</div>
+            <p class="lawha-auth__subtitle"><?php esc_html_e( 'Verified! Loading checkout…', 'lawha' ); ?></p>
+        </div>
+
+        <!-- Skip link for returning customers with accounts -->
+        <div class="lawha-auth__divider"><span><?php esc_html_e( 'or', 'lawha' ); ?></span></div>
+        <a href="<?php echo esc_url( wc_get_page_permalink( 'myaccount' ) ); ?>" class="lawha-auth__alt-link">
+            <?php esc_html_e( 'Log in with existing account', 'lawha' ); ?>
+        </a>
+    </div>
+
+    <script>
+    /* Hide checkout form until phone is verified for guests. */
+    (function(){
+        var form = document.querySelector('form.woocommerce-checkout');
+        if (form) form.style.display = 'none';
+
+        jQuery(document).on('lawha:phone_login_success', function() {
+            var gate = document.getElementById('lawhaCheckoutPhoneGate');
+            if (gate) gate.style.display = 'none';
+            if (form) {
+                form.style.display = '';
+                // Prefill billing phone with the verified number.
+                var phoneField = document.getElementById('billing_phone');
+                if (phoneField && window.WFPL && window.WFPL._lastPhone) {
+                    phoneField.value = window.WFPL._lastPhone;
+                }
+            }
+        });
+    })();
+    </script>
+    <?php
+}
+add_action( 'woocommerce_before_checkout_form', 'lawha_checkout_phone_gate', 5 );
+

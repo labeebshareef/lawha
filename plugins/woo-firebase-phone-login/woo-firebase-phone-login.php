@@ -96,6 +96,7 @@ function wfpl_activate() {
         'wfpl_enable_checkout_login'  => 'yes',
         'wfpl_auto_create_account'    => 'yes',
         'wfpl_enable_popup'           => 'no',
+        'wfpl_headless_mode'          => 'no',
         'wfpl_firebase_api_key'       => '',
         'wfpl_firebase_project_id'    => '',
         'wfpl_firebase_auth_domain'   => '',
@@ -184,6 +185,9 @@ final class WFPL_Plugin {
         // Core (static utility classes — no need to instantiate).
         // \WFPL\Helpers, \WFPL\Firebase_Auth, \WFPL\Auth_Controller are all static.
         // \WFPL\User_Handler is static.
+
+        // Register phone ↔ WooCommerce sync hooks.
+        \WFPL\User_Handler::register_sync_hooks();
 
         // Admin.
         if ( is_admin() ) {

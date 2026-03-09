@@ -33,6 +33,7 @@ class Helpers {
         'enable_checkout_login' => 'yes',
         'auto_create_account'   => 'yes',
         'enable_popup'          => 'no',
+        'headless_mode'         => 'no',
     );
 
     /*--------------------------------------------------------------
@@ -148,11 +149,33 @@ class Helpers {
      * @return bool True if rate-limited.
      */
     public static function is_rate_limited( $phone ) {
+        // Check phone-based limit.
         $max     = absint( self::get_option( 'max_otp_per_hour', 5 ) );
         $key     = 'wfpl_otp_count_' . md5( $phone );
         $current = absint( get_transient( $key ) );
 
-        return $current >= $max;
+        if ( $current >= $max ) {
+            return true;
+        }
+
+        // Check IP-based limit.
+        if ( self::is_ip_rate_limited() ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if the current IP has exceeded the OTP request limit.
+     *
+     * @return bool True if rate-limited.
+     */
+    public static function is_ip_rate_limited() {
+        $ip  = self::get_client_ip();
+        $key = 'wfpl_ip_' . md5( $ip );
+        $max = 15; // max 15 OTP requests per hour per IP.
+        return absint( get_transient( $key ) ) >= $max;
     }
 
     /**
@@ -163,8 +186,62 @@ class Helpers {
     public static function increment_otp_counter( $phone ) {
         $key     = 'wfpl_otp_count_' . md5( $phone );
         $current = absint( get_transient( $key ) );
-
         set_transient( $key, $current + 1, HOUR_IN_SECONDS );
+
+        // Also increment IP counter.
+        $ip      = self::get_client_ip();
+        $ip_key  = 'wfpl_ip_' . md5( $ip );
+        $ip_curr = absint( get_transient( $ip_key ) );
+        set_transient( $ip_key, $ip_curr + 1, HOUR_IN_SECONDS );
+    }
+
+    /*--------------------------------------------------------------
+     * Token replay protection
+     *------------------------------------------------------------*/
+
+    /**
+     * Check if a Firebase token has already been used.
+     *
+     * @param string $token_hash SHA-256 hash of the token.
+     * @return bool True if already used.
+     */
+    public static function is_token_used( $token_hash ) {
+        return (bool) get_transient( 'wfpl_used_' . $token_hash );
+    }
+
+    /**
+     * Mark a Firebase token as used (prevent replay).
+     *
+     * @param string $token_hash SHA-256 hash of the token.
+     */
+    public static function mark_token_used( $token_hash ) {
+        set_transient( 'wfpl_used_' . $token_hash, 1, HOUR_IN_SECONDS );
+    }
+
+    /*--------------------------------------------------------------
+     * Client IP
+     *------------------------------------------------------------*/
+
+    /**
+     * Get the client IP address.
+     *
+     * @return string
+     */
+    public static function get_client_ip() {
+        $headers = array( 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR' );
+        foreach ( $headers as $header ) {
+            if ( ! empty( $_SERVER[ $header ] ) ) {
+                $ip = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
+                // X-Forwarded-For may contain multiple IPs, take the first.
+                if ( strpos( $ip, ',' ) !== false ) {
+                    $ip = trim( explode( ',', $ip )[0] );
+                }
+                if ( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+                    return $ip;
+                }
+            }
+        }
+        return '127.0.0.1';
     }
 
     /*--------------------------------------------------------------
