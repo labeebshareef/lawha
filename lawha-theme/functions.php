@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * LAWHA HIJABS Theme Functions
  *
@@ -714,43 +714,86 @@ add_action( 'init', 'lawha_disable_emojis' );
  * @param string   $email     Email.
  * @param WP_Error $errors    Validation errors.
  */
-function lawha_validate_registration_phone( $username, $email, $errors ) {
+function lawha_validate_registration( $username, $email, $errors ) {
     // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WC handles nonce
+    $name  = isset( $_POST['lawha_reg_name'] ) ? sanitize_text_field( wp_unslash( $_POST['lawha_reg_name'] ) ) : '';
     $phone = isset( $_POST['lawha_reg_phone'] ) ? sanitize_text_field( wp_unslash( $_POST['lawha_reg_phone'] ) ) : '';
+    $pass1 = isset( $_POST['password'] ) ? $_POST['password'] : '';
+    $pass2 = isset( $_POST['lawha_reg_password_confirm'] ) ? $_POST['lawha_reg_password_confirm'] : '';
+    $otp_flag = isset( $_POST['lawha_phone_verified'] ) ? sanitize_text_field( $_POST['lawha_phone_verified'] ) : '';
 
+    // Full name is required.
+    if ( empty( $name ) ) {
+        $errors->add( 'lawha_reg_name_error', __( '<strong>Error</strong>: Full name is required.', 'lawha' ) );
+    }
+
+    // Phone is required.
     if ( empty( $phone ) ) {
         $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: Phone number is required.', 'lawha' ) );
         return;
     }
 
-    // Basic E.164-ish validation: must start with + and have 8-15 digits after it.
+    // Basic E.164-ish validation.
     $digits_only = preg_replace( '/[^\d]/', '', $phone );
     if ( strlen( $digits_only ) < 8 || strlen( $digits_only ) > 15 ) {
-        $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: Please enter a valid phone number with country code (e.g. +966 5XX XXX XXXX).', 'lawha' ) );
+        $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: Please enter a valid phone number with country code.', 'lawha' ) );
         return;
     }
 
     // Check for duplicate phone number.
     $normalized = lawha_normalize_phone( $phone );
-    $existing   = get_users( array(
-        'meta_key'   => 'billing_phone',
-        'meta_value' => $normalized,
-        'number'     => 1,
-        'fields'     => 'ID',
+    $existing = get_users( array(
+        'meta_query' => array(
+            'relation' => 'OR',
+            array( 'key' => 'billing_phone', 'value' => $normalized ),
+            array( 'key' => 'wfpl_phone', 'value' => $normalized ),
+        ),
+        'number' => 1,
+        'fields' => 'ID',
     ) );
     if ( ! empty( $existing ) ) {
-        $existing_wfpl = get_users( array(
-            'meta_key'   => 'wfpl_phone',
-            'meta_value' => $normalized,
-            'number'     => 1,
-            'fields'     => 'ID',
-        ) );
-        if ( ! empty( $existing ) || ! empty( $existing_wfpl ) ) {
-            $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: An account with this phone number already exists. Please log in instead.', 'lawha' ) );
-        }
+        $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: An account with this phone number already exists. Please log in instead.', 'lawha' ) );
+        return;
+    }
+
+    // Enforce India (+91) / UAE (+971) only.
+    if ( substr( $normalized, 0, 3 ) !== '+91' && substr( $normalized, 0, 4 ) !== '+971' ) {
+        $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: Only Indian (+91) and UAE (+971) phone numbers are accepted.', 'lawha' ) );
+        return;
+    }
+
+    // OTP verification is mandatory - check session matches the submitted phone.
+    $session_phone = '';
+    $otp_verified_at = 0;
+    if ( WC()->session ) {
+        $session_phone   = WC()->session->get( 'lawha_otp_verified_phone', '' );
+        $otp_verified_at = (int) WC()->session->get( 'lawha_otp_verified_at', 0 );
+    }
+    if ( '1' !== $otp_flag || $session_phone !== $normalized ) {
+        $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: Please verify your phone number with OTP before registering.', 'lawha' ) );
+        return;
+    }
+
+    // OTP session TTL: reject if verification was more than 10 minutes ago.
+    if ( $otp_verified_at > 0 && ( time() - $otp_verified_at ) > 600 ) {
+        // Clear stale session.
+        WC()->session->set( 'lawha_otp_verified_phone', '' );
+        WC()->session->set( 'lawha_otp_verified_at', 0 );
+        $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: Phone verification has expired. Please verify again.', 'lawha' ) );
+        return;
+    }
+
+    // Password strength.
+    if ( strlen( $pass1 ) < 8 ) {
+        $errors->add( 'lawha_reg_pass_error', __( '<strong>Error</strong>: Password must be at least 8 characters.', 'lawha' ) );
+    }
+
+    // Password confirmation.
+    if ( $pass1 !== $pass2 ) {
+        $errors->add( 'lawha_reg_pass_error', __( '<strong>Error</strong>: Passwords do not match.', 'lawha' ) );
     }
 }
-add_action( 'woocommerce_register_post', 'lawha_validate_registration_phone', 10, 3 );
+add_action( 'woocommerce_register_post', 'lawha_validate_registration', 10, 3 );
 
 /**
  * Save user data after successful WooCommerce registration.
@@ -782,6 +825,7 @@ function lawha_save_registration_data( $customer_id ) {
     // Clear OTP session data.
     if ( WC()->session ) {
         WC()->session->set( 'lawha_otp_verified_phone', '' );
+        WC()->session->set( 'lawha_otp_verified_at', 0 );
     }
 
     // Send email verification.
@@ -812,9 +856,24 @@ function lawha_normalize_phone( $phone ) {
         return '+' . substr( $digits, 2 );
     }
 
-    // Saudi local: 05xxxxxxxx → +9665xxxxxxxx
-    if ( substr( $digits, 0, 1 ) === '0' && strlen( $digits ) === 10 ) {
-        return '+966' . substr( $digits, 1 );
+    // UAE local: 05XXXXXXXX (10 digits starting with 0) → +9715XXXXXXXX
+    if ( strlen( $digits ) === 10 && substr( $digits, 0, 2 ) === '05' ) {
+        return '+971' . substr( $digits, 1 );
+    }
+
+    // UAE without leading zero: 5XXXXXXXX (9 digits starting with 5) → +9715XXXXXXXX
+    if ( strlen( $digits ) === 9 && substr( $digits, 0, 1 ) === '5' ) {
+        return '+971' . $digits;
+    }
+
+    // Indian local: 0XXXXXXXXXX (11 digits starting with 0) → +91XXXXXXXXXX
+    if ( substr( $digits, 0, 1 ) === '0' && strlen( $digits ) === 11 ) {
+        return '+91' . substr( $digits, 1 );
+    }
+
+    // Indian 10-digit (not starting with 5, to avoid UAE collision)
+    if ( strlen( $digits ) === 10 && substr( $digits, 0, 1 ) !== '5' ) {
+        return '+91' . $digits;
     }
 
     return '+' . $digits;
@@ -879,10 +938,24 @@ function lawha_checkout_force_login() {
         return;
     }
 
-    if ( is_checkout() && ! is_user_logged_in() && ! is_wc_endpoint_url( 'order-received' ) ) {
-        $myaccount_url = wc_get_page_permalink( 'myaccount' );
-        $redirect      = add_query_arg( 'redirect_to', urlencode( wc_get_checkout_url() ), $myaccount_url );
+    if ( ! is_checkout() || is_wc_endpoint_url( 'order-received' ) ) {
+        return;
+    }
+
+    $myaccount_url = wc_get_page_permalink( 'myaccount' );
+
+    // Block guests entirely.
+    if ( ! is_user_logged_in() ) {
+        $redirect = add_query_arg( 'redirect_to', urlencode( wc_get_checkout_url() ), $myaccount_url );
         wp_safe_redirect( $redirect );
+        exit;
+    }
+
+    // Block logged-in users whose phone is not verified.
+    $phone_verified = get_user_meta( get_current_user_id(), 'wfpl_phone_verified', true );
+    if ( '1' !== (string) $phone_verified ) {
+        wc_add_notice( __( 'Please verify your phone number before checkout.', 'lawha' ), 'error' );
+        wp_safe_redirect( $myaccount_url );
         exit;
     }
 }
@@ -942,6 +1015,7 @@ add_filter( 'authenticate', 'lawha_authenticate_by_phone', 20, 3 );
 /**
  * Store verified phone in session when OTP is verified during registration.
  * Called via AJAX from the registration form.
+ * SECURITY: Requires a valid Firebase ID token to prevent OTP bypass.
  */
 function lawha_ajax_store_otp_verification() {
     check_ajax_referer( 'lawha_wc_nonce', 'nonce' );
@@ -951,12 +1025,34 @@ function lawha_ajax_store_otp_verification() {
         wp_send_json_error( array( 'message' => 'Phone number is required.' ) );
     }
 
+    // Verify Firebase ID token to confirm OTP was genuinely completed.
+    $firebase_token = isset( $_POST['firebase_token'] ) ? sanitize_text_field( wp_unslash( $_POST['firebase_token'] ) ) : '';
+    if ( empty( $firebase_token ) ) {
+        wp_send_json_error( array( 'message' => 'Verification token is required.' ) );
+    }
+
+    if ( class_exists( 'WFPL\Firebase_Auth' ) ) {
+        $payload = \WFPL\Firebase_Auth::verify_id_token( $firebase_token );
+        if ( is_wp_error( $payload ) ) {
+            wp_send_json_error( array( 'message' => 'Phone verification failed. Please try again.' ) );
+        }
+        // Ensure the token's phone matches the submitted phone.
+        $token_phone = isset( $payload['phone_number'] ) ? $payload['phone_number'] : '';
+        $normalized  = lawha_normalize_phone( $phone );
+        if ( $token_phone !== $normalized ) {
+            wp_send_json_error( array( 'message' => 'Phone number mismatch. Please verify the correct number.' ) );
+        }
+    } else {
+        wp_send_json_error( array( 'message' => 'Phone verification service unavailable.' ) );
+    }
+
     $normalized = lawha_normalize_phone( $phone );
 
     if ( ! WC()->session ) {
         WC()->initialize_session();
     }
     WC()->session->set( 'lawha_otp_verified_phone', $normalized );
+    WC()->session->set( 'lawha_otp_verified_at', time() );
 
     wp_send_json_success( array( 'phone' => $normalized ) );
 }

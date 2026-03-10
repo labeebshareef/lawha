@@ -53,7 +53,7 @@ do_action( 'woocommerce_before_customer_login_form' );
 
       <div class="form-group">
         <label for="username" class="form-label"><?php esc_html_e( 'Email or Phone Number', 'lawha' ); ?>&nbsp;<span class="required">*</span></label>
-        <input type="text" class="form-input" name="username" id="username" autocomplete="username" value="<?php echo ( ! empty( $_POST['username'] ) ) ? esc_attr( wp_unslash( $_POST['username'] ) ) : ''; ?>" placeholder="<?php esc_attr_e( 'you@example.com or +966 5XX XXX XXXX', 'lawha' ); ?>" required />
+        <input type="text" class="form-input" name="username" id="username" autocomplete="username" value="<?php echo ( ! empty( $_POST['username'] ) ) ? esc_attr( wp_unslash( $_POST['username'] ) ) : ''; ?>" placeholder="<?php esc_attr_e( 'you@example.com or +91 XXXXX XXXXX', 'lawha' ); ?>" required />
       </div>
 
       <div class="form-group">

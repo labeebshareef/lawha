@@ -25,16 +25,10 @@
      *  intl-tel-input factory
      * ============================================================= */
     var itiDefaults = {
-        preferredCountries: ['sa', 'ae', 'kw', 'bh', 'qa', 'om'],
-        separateDialCode:   true,
-        utilsScript:        'https://cdn.jsdelivr.net/npm/intl-tel-input@21.1.1/build/js/utils.js',
-        initialCountry:     'auto',
-        geoIpLookup: function (callback) {
-            fetch('https://ipapi.co/json/')
-                .then(function (r) { return r.json(); })
-                .then(function (data) { callback(data.country_code); })
-                .catch(function () { callback('sa'); });
-        }
+        onlyCountries:    ['in', 'ae'],
+        initialCountry:   'ae',
+        separateDialCode: true,
+        utilsScript:      'https://cdn.jsdelivr.net/npm/intl-tel-input@21.1.1/build/js/utils.js'
     };
 
     function initIti(el) {
@@ -226,16 +220,17 @@
 
             try {
                 var credential = await WFPL.verifyOTP(code);
-                // Successful verification — store in session via AJAX.
+                // Successful verification — store in session via AJAX with Firebase token.
                 var idToken = await credential.user.getIdToken();
 
                 await $.ajax({
                     url: lawhaAuth.ajax_url,
                     method: 'POST',
                     data: {
-                        action: 'lawha_store_otp_verification',
-                        nonce:  lawhaAuth.nonce,
-                        phone:  regPhone
+                        action:         'lawha_store_otp_verification',
+                        nonce:          lawhaAuth.nonce,
+                        phone:          regPhone,
+                        firebase_token: idToken
                     }
                 });
 
