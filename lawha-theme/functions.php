@@ -10,9 +10,81 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'LAWHA_VERSION', '1.0.0' );
+define( 'LAWHA_VERSION', wp_get_theme()->get( 'Version' ) ?: '1.0.0' );
 define( 'LAWHA_DIR', get_template_directory() );
 define( 'LAWHA_URI', get_template_directory_uri() );
+
+/**
+ * Get a cache-busting version for a specific theme asset.
+ */
+function lawha_get_asset_version( $relative_path ) {
+    $relative_path = ltrim( $relative_path, '/' );
+    $file_path     = LAWHA_DIR . '/' . $relative_path;
+
+    if ( is_file( $file_path ) ) {
+        return (string) filemtime( $file_path );
+    }
+
+    return LAWHA_VERSION;
+}
+
+/**
+ * Build a deploy identifier from the latest changed theme file.
+ */
+function lawha_get_build_version() {
+    static $build_version = null;
+
+    if ( null !== $build_version ) {
+        return $build_version;
+    }
+
+    $latest_mtime = 0;
+    $scan_paths   = array(
+        LAWHA_DIR . '/style.css',
+        LAWHA_DIR . '/functions.php',
+        LAWHA_DIR . '/header.php',
+        LAWHA_DIR . '/footer.php',
+        LAWHA_DIR . '/css',
+        LAWHA_DIR . '/js',
+        LAWHA_DIR . '/woocommerce',
+    );
+
+    foreach ( $scan_paths as $scan_path ) {
+        if ( is_file( $scan_path ) ) {
+            $latest_mtime = max( $latest_mtime, (int) filemtime( $scan_path ) );
+            continue;
+        }
+
+        if ( ! is_dir( $scan_path ) ) {
+            continue;
+        }
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator( $scan_path, FilesystemIterator::SKIP_DOTS )
+        );
+
+        foreach ( $iterator as $file_info ) {
+            if ( ! $file_info->isFile() ) {
+                continue;
+            }
+
+            $extension = strtolower( $file_info->getExtension() );
+            if ( ! in_array( $extension, array( 'php', 'css', 'js' ), true ) ) {
+                continue;
+            }
+
+            $latest_mtime = max( $latest_mtime, $file_info->getMTime() );
+        }
+    }
+
+    if ( $latest_mtime > 0 ) {
+        $build_version = sprintf( '%s.%s', LAWHA_VERSION, gmdate( 'YmdHis', $latest_mtime ) );
+        return $build_version;
+    }
+
+    $build_version = LAWHA_VERSION;
+    return $build_version;
+}
 
 /* =========================================
    THEME SETUP
@@ -77,21 +149,21 @@ function lawha_enqueue_styles() {
     );
 
     // Theme stylesheets (in correct dependency order)
-    wp_enqueue_style( 'lawha-reset', LAWHA_URI . '/css/reset.css', array(), LAWHA_VERSION );
-    wp_enqueue_style( 'lawha-variables', LAWHA_URI . '/css/variables.css', array( 'lawha-reset' ), LAWHA_VERSION );
-    wp_enqueue_style( 'lawha-typography', LAWHA_URI . '/css/typography.css', array( 'lawha-variables' ), LAWHA_VERSION );
-    wp_enqueue_style( 'lawha-layout', LAWHA_URI . '/css/layout.css', array( 'lawha-variables' ), LAWHA_VERSION );
-    wp_enqueue_style( 'lawha-components', LAWHA_URI . '/css/components.css', array( 'lawha-layout' ), LAWHA_VERSION );
-    wp_enqueue_style( 'lawha-animations', LAWHA_URI . '/css/animations.css', array( 'lawha-components' ), LAWHA_VERSION );
-    wp_enqueue_style( 'lawha-responsive', LAWHA_URI . '/css/responsive.css', array( 'lawha-components' ), LAWHA_VERSION );
+    wp_enqueue_style( 'lawha-reset', LAWHA_URI . '/css/reset.css', array(), lawha_get_asset_version( 'css/reset.css' ) );
+    wp_enqueue_style( 'lawha-variables', LAWHA_URI . '/css/variables.css', array( 'lawha-reset' ), lawha_get_asset_version( 'css/variables.css' ) );
+    wp_enqueue_style( 'lawha-typography', LAWHA_URI . '/css/typography.css', array( 'lawha-variables' ), lawha_get_asset_version( 'css/typography.css' ) );
+    wp_enqueue_style( 'lawha-layout', LAWHA_URI . '/css/layout.css', array( 'lawha-variables' ), lawha_get_asset_version( 'css/layout.css' ) );
+    wp_enqueue_style( 'lawha-components', LAWHA_URI . '/css/components.css', array( 'lawha-layout' ), lawha_get_asset_version( 'css/components.css' ) );
+    wp_enqueue_style( 'lawha-animations', LAWHA_URI . '/css/animations.css', array( 'lawha-components' ), lawha_get_asset_version( 'css/animations.css' ) );
+    wp_enqueue_style( 'lawha-responsive', LAWHA_URI . '/css/responsive.css', array( 'lawha-components' ), lawha_get_asset_version( 'css/responsive.css' ) );
 
     // WooCommerce overrides (only when WooCommerce is active)
     if ( class_exists( 'WooCommerce' ) ) {
-        wp_enqueue_style( 'lawha-woocommerce', LAWHA_URI . '/css/woocommerce.css', array( 'lawha-components' ), LAWHA_VERSION );
+        wp_enqueue_style( 'lawha-woocommerce', LAWHA_URI . '/css/woocommerce.css', array( 'lawha-components' ), lawha_get_asset_version( 'css/woocommerce.css' ) );
     }
 
     // Main theme stylesheet (WordPress requirement, contains only header)
-    wp_enqueue_style( 'lawha-style', get_stylesheet_uri(), array( 'lawha-responsive' ), LAWHA_VERSION );
+    wp_enqueue_style( 'lawha-style', get_stylesheet_uri(), array( 'lawha-responsive' ), lawha_get_asset_version( 'style.css' ) );
 }
 add_action( 'wp_enqueue_scripts', 'lawha_enqueue_styles' );
 
@@ -105,7 +177,7 @@ function lawha_enqueue_scripts() {
         'lawha-scroll-animations',
         LAWHA_URI . '/js/scrollAnimations.js',
         array(),
-        LAWHA_VERSION,
+        lawha_get_asset_version( 'js/scrollAnimations.js' ),
         array( 'strategy' => 'defer', 'in_footer' => true )
     );
 
@@ -114,7 +186,7 @@ function lawha_enqueue_scripts() {
         'lawha-navbar',
         LAWHA_URI . '/js/navbar.js',
         array(),
-        LAWHA_VERSION,
+        lawha_get_asset_version( 'js/navbar.js' ),
         array( 'strategy' => 'defer', 'in_footer' => true )
     );
 
@@ -123,7 +195,7 @@ function lawha_enqueue_scripts() {
         'lawha-interactions',
         LAWHA_URI . '/js/interactions.js',
         array(),
-        LAWHA_VERSION,
+        lawha_get_asset_version( 'js/interactions.js' ),
         array( 'strategy' => 'defer', 'in_footer' => true )
     );
 
@@ -132,7 +204,7 @@ function lawha_enqueue_scripts() {
         'lawha-main',
         LAWHA_URI . '/js/main.js',
         array( 'lawha-scroll-animations', 'lawha-navbar', 'lawha-interactions' ),
-        LAWHA_VERSION,
+        lawha_get_asset_version( 'js/main.js' ),
         array( 'strategy' => 'defer', 'in_footer' => true )
     );
 }
@@ -318,7 +390,7 @@ if ( class_exists( 'WooCommerce' ) ) {
             'lawha-woocommerce',
             LAWHA_URI . '/js/woocommerce.js',
             array(),
-            LAWHA_VERSION,
+            lawha_get_asset_version( 'js/woocommerce.js' ),
             true
         );
 
@@ -914,7 +986,7 @@ function lawha_enqueue_phone_auth() {
         'lawha-phone-auth',
         LAWHA_URI . '/js/phone-auth.js',
         array( 'jquery', 'wfpl-auth' ),
-        LAWHA_VERSION,
+        lawha_get_asset_version( 'js/phone-auth.js' ),
         array( 'in_footer' => true )
     );
 
