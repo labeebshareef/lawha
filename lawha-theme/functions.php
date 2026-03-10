@@ -1123,6 +1123,10 @@ function lawha_ajax_store_otp_verification() {
     if ( ! WC()->session ) {
         WC()->initialize_session();
     }
+    // Ensure session cookie is set for guests so data persists to form POST.
+    if ( method_exists( WC()->session, 'has_session' ) && ! WC()->session->has_session() ) {
+        WC()->session->set_customer_session_cookie( true );
+    }
     WC()->session->set( 'lawha_otp_verified_phone', $normalized );
     WC()->session->set( 'lawha_otp_verified_at', time() );
 

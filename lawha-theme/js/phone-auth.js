@@ -223,7 +223,7 @@
                 // Successful verification — store in session via AJAX with Firebase token.
                 var idToken = await credential.user.getIdToken();
 
-                await $.ajax({
+                var response = await $.ajax({
                     url: lawhaAuth.ajax_url,
                     method: 'POST',
                     data: {
@@ -233,6 +233,10 @@
                         firebase_token: idToken
                     }
                 });
+
+                if (!response || !response.success) {
+                    throw new Error(response && response.data && response.data.message ? response.data.message : 'Failed to store phone verification.');
+                }
 
                 phoneVerified = true;
                 $hiddenFlag.val('1');
