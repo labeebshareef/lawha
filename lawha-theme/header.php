@@ -68,9 +68,31 @@ if ( ! defined( 'ABSPATH' ) ) {
           ?>
         </div>
 
-        <!-- Cart Icon + Hamburger -->
+        <!-- Cart Icon + Account + Hamburger -->
         <div class="navbar__actions">
           <?php if ( class_exists( 'WooCommerce' ) ) : ?>
+
+            <!-- Account Icon -->
+            <div class="navbar__account" id="navAccount">
+              <button class="navbar__account-btn" aria-label="<?php esc_attr_e( 'Account', 'lawha' ); ?>" aria-expanded="false" aria-haspopup="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </button>
+              <div class="navbar__account-dropdown" id="navAccountDropdown">
+                <?php if ( is_user_logged_in() ) : ?>
+                  <?php $current_user = wp_get_current_user(); ?>
+                  <div class="navbar__account-user">
+                    <?php echo esc_html( $current_user->display_name ?: $current_user->user_email ); ?>
+                  </div>
+                  <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'dashboard' ) ); ?>" class="navbar__account-link"><?php esc_html_e( 'My Account', 'lawha' ); ?></a>
+                  <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'orders' ) ); ?>" class="navbar__account-link"><?php esc_html_e( 'Orders', 'lawha' ); ?></a>
+                  <a href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>" class="navbar__account-link navbar__account-link--logout"><?php esc_html_e( 'Logout', 'lawha' ); ?></a>
+                <?php else : ?>
+                  <a href="<?php echo esc_url( wc_get_page_permalink( 'myaccount' ) ); ?>" class="navbar__account-link"><?php esc_html_e( 'Sign In', 'lawha' ); ?></a>
+                  <a href="<?php echo esc_url( add_query_arg( 'tab', 'register', wc_get_page_permalink( 'myaccount' ) ) ); ?>" class="navbar__account-link"><?php esc_html_e( 'Create Account', 'lawha' ); ?></a>
+                <?php endif; ?>
+              </div>
+            </div>
+
             <button class="navbar__cart lawha-cart-trigger" aria-label="<?php esc_attr_e( 'Shopping Cart', 'lawha' ); ?>">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 01-8 0"></path></svg>
               <span class="lawha-cart-count"<?php echo WC()->cart->get_cart_contents_count() > 0 ? '' : ' style="display:none"'; ?>><?php echo esc_html( WC()->cart->get_cart_contents_count() ); ?></span>

@@ -753,23 +753,41 @@ function lawha_validate_registration_phone( $username, $email, $errors ) {
 add_action( 'woocommerce_register_post', 'lawha_validate_registration_phone', 10, 3 );
 
 /**
- * Save phone number to user meta after successful WooCommerce registration.
- *
- * @param int $customer_id New customer ID.
+ * Save user data after successful WooCommerce registration.
  */
-function lawha_save_registration_phone( $customer_id ) {
+function lawha_save_registration_data( $customer_id ) {
     // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WC handles nonce
-    if ( empty( $_POST['lawha_reg_phone'] ) ) {
-        return;
+    $name  = isset( $_POST['lawha_reg_name'] ) ? sanitize_text_field( wp_unslash( $_POST['lawha_reg_name'] ) ) : '';
+    $phone = isset( $_POST['lawha_reg_phone'] ) ? sanitize_text_field( wp_unslash( $_POST['lawha_reg_phone'] ) ) : '';
+
+    if ( $name ) {
+        $parts = explode( ' ', $name, 2 );
+        wp_update_user( array(
+            'ID'           => $customer_id,
+            'first_name'   => $parts[0],
+            'last_name'    => isset( $parts[1] ) ? $parts[1] : '',
+            'display_name' => $name,
+        ) );
+        update_user_meta( $customer_id, 'billing_first_name', $parts[0] );
+        update_user_meta( $customer_id, 'billing_last_name', isset( $parts[1] ) ? $parts[1] : '' );
     }
 
-    $phone      = sanitize_text_field( wp_unslash( $_POST['lawha_reg_phone'] ) );
-    $normalized = lawha_normalize_phone( $phone );
+    if ( $phone ) {
+        $normalized = lawha_normalize_phone( $phone );
+        update_user_meta( $customer_id, 'billing_phone', $normalized );
+        update_user_meta( $customer_id, 'wfpl_phone', $normalized );
+        update_user_meta( $customer_id, 'wfpl_phone_verified', 1 );
+    }
 
-    update_user_meta( $customer_id, 'billing_phone', $normalized );
-    update_user_meta( $customer_id, 'wfpl_phone', $normalized );
+    // Clear OTP session data.
+    if ( WC()->session ) {
+        WC()->session->set( 'lawha_otp_verified_phone', '' );
+    }
+
+    // Send email verification.
+    lawha_send_verification_email( $customer_id );
 }
-add_action( 'woocommerce_created_customer', 'lawha_save_registration_phone', 10, 1 );
+add_action( 'woocommerce_created_customer', 'lawha_save_registration_data', 10, 1 );
 
 /**
  * Normalize a phone number to E.164 format.
@@ -840,120 +858,303 @@ function lawha_enqueue_phone_auth() {
         LAWHA_VERSION,
         array( 'in_footer' => true )
     );
+
+    wp_localize_script( 'lawha-phone-auth', 'lawhaAuth', array(
+        'ajax_url' => admin_url( 'admin-ajax.php' ),
+        'nonce'    => wp_create_nonce( 'lawha_wc_nonce' ),
+    ) );
 }
 add_action( 'wp_enqueue_scripts', 'lawha_enqueue_phone_auth', 20 );
 
 
 /* =========================================
-   CHECKOUT — PHONE VERIFICATION FOR GUESTS
+   CHECKOUT — FORCE LOGIN (NO GUEST CHECKOUT)
    ========================================= */
 
 /**
- * Show a compact phone-verify widget above the checkout form
- * for non-logged-in users when Firebase is configured.
- * After verification, the checkout form reveals itself.
+ * Redirect guests away from checkout to the login page.
  */
-function lawha_checkout_phone_gate( $checkout ) {
-    // Only for guests.
-    if ( is_user_logged_in() ) {
+function lawha_checkout_force_login() {
+    if ( ! class_exists( 'WooCommerce' ) ) {
         return;
     }
 
-    // Only when Firebase is available.
-    if ( ! function_exists( 'wfpl_get_option' ) ) {
-        return;
+    if ( is_checkout() && ! is_user_logged_in() && ! is_wc_endpoint_url( 'order-received' ) ) {
+        $myaccount_url = wc_get_page_permalink( 'myaccount' );
+        $redirect      = add_query_arg( 'redirect_to', urlencode( wc_get_checkout_url() ), $myaccount_url );
+        wp_safe_redirect( $redirect );
+        exit;
     }
-    $api_key    = wfpl_get_option( 'firebase_api_key', '' );
-    $project_id = wfpl_get_option( 'firebase_project_id', '' );
-    if ( empty( $api_key ) || empty( $project_id ) ) {
-        return;
-    }
-    ?>
-    <div id="lawhaCheckoutPhoneGate" class="lawha-auth" style="max-width:480px;margin:0 auto var(--space-8);">
-        <h3 class="lawha-auth__heading" style="font-size:var(--text-2xl);">
-            <?php esc_html_e( 'Verify Your Phone', 'lawha' ); ?>
-        </h3>
-        <p class="lawha-auth__subtitle">
-            <?php esc_html_e( 'Quick phone verification to proceed with checkout', 'lawha' ); ?>
-        </p>
-
-        <div id="lawhaAuthMessage" class="lawha-auth__message" role="alert" aria-live="polite" style="display:none;"></div>
-
-        <!-- Phone Input -->
-        <div id="lawhaPhoneStep" class="lawha-phone-step">
-            <div class="form-group">
-                <label for="lawha_phone" class="form-label"><?php esc_html_e( 'Phone Number', 'lawha' ); ?>&nbsp;<span class="required">*</span></label>
-                <input type="tel" class="form-input" id="lawha_phone" name="phone" autocomplete="tel" required />
-            </div>
-            <div id="lawha-recaptcha" class="lawha-recaptcha-container"></div>
-            <button type="button" id="lawhaSendOtp" class="btn btn--primary" style="width:100%;">
-                <span class="btn__text"><?php esc_html_e( 'Send Verification Code', 'lawha' ); ?></span>
-                <span class="btn__spinner lawha-spinner" style="display:none;"></span>
-                <span class="btn__arrow">→</span>
-            </button>
-        </div>
-
-        <!-- OTP Input -->
-        <div id="lawhaOtpStep" class="lawha-phone-step" style="display:none;">
-            <p class="lawha-auth__subtitle">
-                <?php esc_html_e( 'Enter the 6-digit code sent to', 'lawha' ); ?>
-                <strong id="lawhaPhoneDisplay"></strong>
-            </p>
-            <div class="lawha-otp-inputs" dir="ltr">
-                <?php for ( $i = 0; $i < 6; $i++ ) : ?>
-                    <input type="text" class="lawha-otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-idx="<?php echo $i; ?>" aria-label="<?php echo esc_attr( sprintf( 'Digit %d', $i + 1 ) ); ?>" />
-                <?php endfor; ?>
-            </div>
-            <button type="button" id="lawhaVerifyOtp" class="btn btn--primary" style="width:100%;" disabled>
-                <span class="btn__text"><?php esc_html_e( 'Verify & Continue', 'lawha' ); ?></span>
-                <span class="btn__spinner lawha-spinner" style="display:none;"></span>
-                <span class="btn__arrow">→</span>
-            </button>
-            <div class="lawha-auth__resend">
-                <span id="lawhaResendTimer" class="lawha-auth__timer"></span>
-                <button type="button" id="lawhaResendOtp" class="lawha-auth__resend-btn" style="display:none;">
-                    <?php esc_html_e( 'Resend Code', 'lawha' ); ?>
-                </button>
-            </div>
-            <button type="button" id="lawhaBackToPhone" class="lawha-auth__back-link">
-                ← <?php esc_html_e( 'Change phone number', 'lawha' ); ?>
-            </button>
-        </div>
-
-        <!-- Success -->
-        <div id="lawhaSuccessStep" class="lawha-phone-step" style="display:none;">
-            <div class="lawha-auth__success-icon">✓</div>
-            <p class="lawha-auth__subtitle"><?php esc_html_e( 'Verified! Loading checkout…', 'lawha' ); ?></p>
-        </div>
-
-        <!-- Skip link for returning customers with accounts -->
-        <div class="lawha-auth__divider"><span><?php esc_html_e( 'or', 'lawha' ); ?></span></div>
-        <a href="<?php echo esc_url( wc_get_page_permalink( 'myaccount' ) ); ?>" class="lawha-auth__alt-link">
-            <?php esc_html_e( 'Log in with existing account', 'lawha' ); ?>
-        </a>
-    </div>
-
-    <script>
-    /* Hide checkout form until phone is verified for guests. */
-    (function(){
-        var form = document.querySelector('form.woocommerce-checkout');
-        if (form) form.style.display = 'none';
-
-        jQuery(document).on('lawha:phone_login_success', function() {
-            var gate = document.getElementById('lawhaCheckoutPhoneGate');
-            if (gate) gate.style.display = 'none';
-            if (form) {
-                form.style.display = '';
-                // Prefill billing phone with the verified number.
-                var phoneField = document.getElementById('billing_phone');
-                if (phoneField && window.WFPL && window.WFPL._lastPhone) {
-                    phoneField.value = window.WFPL._lastPhone;
-                }
-            }
-        });
-    })();
-    </script>
-    <?php
 }
-add_action( 'woocommerce_before_checkout_form', 'lawha_checkout_phone_gate', 5 );
+add_action( 'template_redirect', 'lawha_checkout_force_login' );
+
+/* =========================================
+   ALLOW PHONE NUMBER AS LOGIN IDENTIFIER
+   ========================================= */
+
+/**
+ * When a user enters a phone number as username, look up the
+ * actual WordPress user and authenticate with their credentials.
+ */
+function lawha_authenticate_by_phone( $user, $username, $password ) {
+    if ( $user instanceof \WP_User || is_wp_error( $user ) ) {
+        return $user;
+    }
+
+    if ( empty( $username ) || empty( $password ) ) {
+        return $user;
+    }
+
+    // Check if username looks like a phone number.
+    $cleaned = preg_replace( '/[\s\-\(\)]/', '', $username );
+    if ( ! preg_match( '/^\+?\d{8,15}$/', $cleaned ) ) {
+        return $user;
+    }
+
+    $normalized = lawha_normalize_phone( $cleaned );
+
+    $users = get_users( array(
+        'meta_query' => array(
+            'relation' => 'OR',
+            array( 'key' => 'wfpl_phone', 'value' => $normalized ),
+            array( 'key' => 'billing_phone', 'value' => $normalized ),
+        ),
+        'number' => 1,
+    ) );
+
+    if ( empty( $users ) ) {
+        return $user;
+    }
+
+    $found_user = $users[0];
+
+    // Authenticate with the found user's login name.
+    $auth_user = wp_authenticate_username_password( null, $found_user->user_login, $password );
+    return $auth_user;
+}
+add_filter( 'authenticate', 'lawha_authenticate_by_phone', 20, 3 );
+
+
+/* =========================================
+   REGISTRATION OTP SESSION HANDLER (AJAX)
+   ========================================= */
+
+/**
+ * Store verified phone in session when OTP is verified during registration.
+ * Called via AJAX from the registration form.
+ */
+function lawha_ajax_store_otp_verification() {
+    check_ajax_referer( 'lawha_wc_nonce', 'nonce' );
+
+    $phone = isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '';
+    if ( empty( $phone ) ) {
+        wp_send_json_error( array( 'message' => 'Phone number is required.' ) );
+    }
+
+    $normalized = lawha_normalize_phone( $phone );
+
+    if ( ! WC()->session ) {
+        WC()->initialize_session();
+    }
+    WC()->session->set( 'lawha_otp_verified_phone', $normalized );
+
+    wp_send_json_success( array( 'phone' => $normalized ) );
+}
+add_action( 'wp_ajax_lawha_store_otp_verification', 'lawha_ajax_store_otp_verification' );
+add_action( 'wp_ajax_nopriv_lawha_store_otp_verification', 'lawha_ajax_store_otp_verification' );
+
+
+/* =========================================
+   FORGOT PASSWORD VIA OTP (AJAX)
+   ========================================= */
+
+/**
+ * Check if a phone number is associated with an account.
+ */
+function lawha_ajax_forgot_check_phone() {
+    check_ajax_referer( 'lawha_wc_nonce', 'nonce' );
+
+    $phone = isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '';
+    if ( empty( $phone ) ) {
+        wp_send_json_error( array( 'message' => 'Phone number is required.' ) );
+    }
+
+    $normalized = lawha_normalize_phone( $phone );
+    $users = get_users( array(
+        'meta_query' => array(
+            'relation' => 'OR',
+            array( 'key' => 'wfpl_phone', 'value' => $normalized ),
+            array( 'key' => 'billing_phone', 'value' => $normalized ),
+        ),
+        'number' => 1,
+    ) );
+
+    if ( empty( $users ) ) {
+        wp_send_json_error( array( 'message' => 'No account found with this phone number.' ) );
+    }
+
+    wp_send_json_success( array( 'found' => true ) );
+}
+add_action( 'wp_ajax_lawha_forgot_check_phone', 'lawha_ajax_forgot_check_phone' );
+add_action( 'wp_ajax_nopriv_lawha_forgot_check_phone', 'lawha_ajax_forgot_check_phone' );
+
+/**
+ * Reset password after OTP verification.
+ */
+function lawha_ajax_forgot_reset_password() {
+    check_ajax_referer( 'lawha_wc_nonce', 'nonce' );
+
+    $phone        = isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '';
+    $new_password = isset( $_POST['new_password'] ) ? $_POST['new_password'] : '';
+    $id_token     = isset( $_POST['id_token'] ) ? sanitize_text_field( wp_unslash( $_POST['id_token'] ) ) : '';
+
+    if ( empty( $phone ) || empty( $new_password ) ) {
+        wp_send_json_error( array( 'message' => 'Phone and new password are required.' ) );
+    }
+
+    if ( strlen( $new_password ) < 8 ) {
+        wp_send_json_error( array( 'message' => 'Password must be at least 8 characters.' ) );
+    }
+
+    // Verify the Firebase ID token to ensure OTP was genuinely completed.
+    if ( ! empty( $id_token ) && class_exists( 'WFPL\Firebase_Auth' ) ) {
+        $payload = \WFPL\Firebase_Auth::verify_id_token( $id_token );
+        if ( is_wp_error( $payload ) ) {
+            wp_send_json_error( array( 'message' => 'OTP verification failed. Please try again.' ) );
+        }
+        $token_phone = isset( $payload['phone_number'] ) ? $payload['phone_number'] : '';
+        $normalized  = lawha_normalize_phone( $phone );
+        if ( $token_phone !== $normalized ) {
+            wp_send_json_error( array( 'message' => 'Phone number mismatch.' ) );
+        }
+    }
+
+    $normalized = lawha_normalize_phone( $phone );
+    $users = get_users( array(
+        'meta_query' => array(
+            'relation' => 'OR',
+            array( 'key' => 'wfpl_phone', 'value' => $normalized ),
+            array( 'key' => 'billing_phone', 'value' => $normalized ),
+        ),
+        'number' => 1,
+    ) );
+
+    if ( empty( $users ) ) {
+        wp_send_json_error( array( 'message' => 'No account found with this phone number.' ) );
+    }
+
+    $user = $users[0];
+    wp_set_password( $new_password, $user->ID );
+
+    wp_send_json_success( array( 'message' => 'Password reset successfully.' ) );
+}
+add_action( 'wp_ajax_lawha_forgot_reset_password', 'lawha_ajax_forgot_reset_password' );
+add_action( 'wp_ajax_nopriv_lawha_forgot_reset_password', 'lawha_ajax_forgot_reset_password' );
+
+
+/* =========================================
+   EMAIL VERIFICATION SYSTEM
+   ========================================= */
+
+/**
+ * Send a verification email to a newly registered user.
+ */
+function lawha_send_verification_email( $user_id ) {
+    $user = get_user_by( 'ID', $user_id );
+    if ( ! $user || ! is_email( $user->user_email ) ) {
+        return;
+    }
+
+    // Don't send for placeholder emails.
+    if ( strpos( $user->user_email, '@noreply.' ) !== false ) {
+        return;
+    }
+
+    $token = wp_generate_password( 32, false );
+    update_user_meta( $user_id, 'lawha_email_verify_token', $token );
+    update_user_meta( $user_id, 'lawha_email_verify_sent', time() );
+    update_user_meta( $user_id, 'lawha_email_verified', 0 );
+
+    // 7-day grace period.
+    update_user_meta( $user_id, 'lawha_email_verify_deadline', time() + ( 7 * DAY_IN_SECONDS ) );
+
+    $verify_url = add_query_arg( array(
+        'lawha_verify_email' => $token,
+        'uid'                => $user_id,
+    ), home_url( '/' ) );
+
+    $site_name = get_bloginfo( 'name' );
+    $subject   = sprintf( __( 'Verify your email — %s', 'lawha' ), $site_name );
+    $message   = sprintf(
+        __( "Hello %s,\n\nThank you for creating an account with %s.\n\nPlease verify your email address by clicking the link below:\n\n%s\n\nThis link will expire in 7 days.\n\nIf you did not create this account, you can safely ignore this email.\n\nBest regards,\n%s", 'lawha' ),
+        $user->display_name ?: $user->user_login,
+        $site_name,
+        esc_url( $verify_url ),
+        $site_name
+    );
+
+    wp_mail( $user->user_email, $subject, $message );
+}
+
+/**
+ * Handle email verification link clicks.
+ */
+function lawha_handle_email_verification() {
+    if ( ! isset( $_GET['lawha_verify_email'] ) || ! isset( $_GET['uid'] ) ) {
+        return;
+    }
+
+    $token   = sanitize_text_field( $_GET['lawha_verify_email'] );
+    $user_id = absint( $_GET['uid'] );
+
+    if ( empty( $token ) || empty( $user_id ) ) {
+        return;
+    }
+
+    $stored_token = get_user_meta( $user_id, 'lawha_email_verify_token', true );
+    $deadline     = get_user_meta( $user_id, 'lawha_email_verify_deadline', true );
+
+    if ( empty( $stored_token ) || ! hash_equals( $stored_token, $token ) ) {
+        wc_add_notice( __( 'Invalid verification link.', 'lawha' ), 'error' );
+        wp_safe_redirect( wc_get_page_permalink( 'myaccount' ) );
+        exit;
+    }
+
+    if ( $deadline && time() > (int) $deadline ) {
+        wc_add_notice( __( 'Verification link has expired. Please request a new one.', 'lawha' ), 'error' );
+        wp_safe_redirect( wc_get_page_permalink( 'myaccount' ) );
+        exit;
+    }
+
+    update_user_meta( $user_id, 'lawha_email_verified', 1 );
+    delete_user_meta( $user_id, 'lawha_email_verify_token' );
+
+    wc_add_notice( __( 'Email verified successfully!', 'lawha' ), 'success' );
+    wp_safe_redirect( wc_get_page_permalink( 'myaccount' ) );
+    exit;
+}
+add_action( 'init', 'lawha_handle_email_verification' );
+
+/**
+ * AJAX: Resend verification email.
+ */
+function lawha_ajax_resend_verification_email() {
+    check_ajax_referer( 'lawha_wc_nonce', 'nonce' );
+
+    if ( ! is_user_logged_in() ) {
+        wp_send_json_error( array( 'message' => 'You must be logged in.' ) );
+    }
+
+    $user_id   = get_current_user_id();
+    $last_sent = get_user_meta( $user_id, 'lawha_email_verify_sent', true );
+
+    // Rate limit: 1 email per 60 seconds.
+    if ( $last_sent && ( time() - (int) $last_sent ) < 60 ) {
+        wp_send_json_error( array( 'message' => 'Please wait before requesting another email.' ) );
+    }
+
+    lawha_send_verification_email( $user_id );
+    wp_send_json_success( array( 'message' => 'Verification email sent!' ) );
+}
+add_action( 'wp_ajax_lawha_resend_verification_email', 'lawha_ajax_resend_verification_email' );
 

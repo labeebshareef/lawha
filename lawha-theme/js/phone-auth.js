@@ -1,64 +1,47 @@
 /**
- * LAWHA Theme — Phone-First Authentication
+ * LAWHA Theme — Account Authentication
  *
- * Bridges the LAWHA login template (form-login.php) with
- * the WFPL Firebase SDK (headless mode).
+ * Handles:
+ *  1. Registration phone OTP inline verification
+ *  2. Forgot password OTP flow (phone → OTP → new password)
+ *  3. intl-tel-input initialization for all phone fields
  *
  * Dependencies: jQuery, WFPL (wfpl-auth), intl-tel-input
  *
  * @package LAWHA
  */
 
-/* global jQuery, WFPL, wfpl_config, intlTelInput */
+/* global jQuery, WFPL, wfpl_config, lawhaAuth, intlTelInput */
 
 (function ($) {
     'use strict';
 
     /* ================================================================
-     *  DOM refs
+     *  Shared refs
      * ============================================================= */
-    const $phoneStep    = $('#lawhaPhoneStep');
-    const $otpStep      = $('#lawhaOtpStep');
-    const $successStep  = $('#lawhaSuccessStep');
-    const $message      = $('#lawhaAuthMessage');
-    const $phoneInput   = $('#lawha_phone');
-    const $phoneDisplay = $('#lawhaPhoneDisplay');
-    const $sendBtn      = $('#lawhaSendOtp');
-    const $verifyBtn    = $('#lawhaVerifyOtp');
-    const $resendBtn    = $('#lawhaResendOtp');
-    const $timerEl      = $('#lawhaResendTimer');
-    const $backBtn      = $('#lawhaBackToPhone');
-    const $showEmail    = $('#lawhaShowEmail');
-    const $showPhone    = $('#lawhaShowPhone');
-    const $emailPanel   = $('#lawhaEmailPanel');
-    const $otpDigits    = $('.lawha-otp-digit');
-
-    // Bail if the phone login template is not present.
-    if (!$phoneStep.length) return;
+    var $message = $('#lawhaAuthMessage');
 
     /* ================================================================
-     *  State
+     *  intl-tel-input factory
      * ============================================================= */
-    let iti           = null; // intl-tel-input instance
-    let timerInterval = null;
-    let currentPhone  = '';
+    var itiDefaults = {
+        preferredCountries: ['sa', 'ae', 'kw', 'bh', 'qa', 'om'],
+        separateDialCode:   true,
+        utilsScript:        'https://cdn.jsdelivr.net/npm/intl-tel-input@21.1.1/build/js/utils.js',
+        initialCountry:     'auto',
+        geoIpLookup: function (callback) {
+            fetch('https://ipapi.co/json/')
+                .then(function (r) { return r.json(); })
+                .then(function (data) { callback(data.country_code); })
+                .catch(function () { callback('sa'); });
+        }
+    };
 
-    /* ================================================================
-     *  Initialize intl-tel-input
-     * ============================================================= */
-    if ($phoneInput.length && typeof intlTelInput !== 'undefined') {
-        iti = intlTelInput($phoneInput[0], {
-            preferredCountries: ['sa', 'ae', 'kw', 'bh', 'qa', 'om'],
-            separateDialCode:   true,
-            utilsScript:        'https://cdn.jsdelivr.net/npm/intl-tel-input@21.1.1/build/js/utils.js',
-            initialCountry:     'auto',
-            geoIpLookup(callback) {
-                fetch('https://ipapi.co/json/')
-                    .then(r => r.json())
-                    .then(data => callback(data.country_code))
-                    .catch(() => callback('sa'));
-            },
-        });
+    function initIti(el) {
+        if (el && typeof intlTelInput !== 'undefined') {
+            return intlTelInput(el, itiDefaults);
+        }
+        return null;
     }
 
     /* ================================================================
@@ -66,7 +49,6 @@
      * ============================================================= */
 
     function showMsg(text, type) {
-        // type: 'error' | 'success' | 'info'
         $message
             .removeClass('lawha-msg--error lawha-msg--success lawha-msg--info')
             .addClass('lawha-msg--' + type)
@@ -92,281 +74,430 @@
         }
     }
 
-    function switchStep(step) {
-        $phoneStep.hide();
-        $otpStep.hide();
-        $successStep.hide();
-
-        if (step === 'phone')   $phoneStep.fadeIn(250);
-        if (step === 'otp')     $otpStep.fadeIn(250);
-        if (step === 'success') $successStep.fadeIn(250);
+    function friendlyError(err) {
+        var msg = err.message || 'Something went wrong. Please try again.';
+        if (err.code === 'auth/too-many-requests') msg = 'Too many attempts. Please wait a few minutes and try again.';
+        else if (err.code === 'auth/invalid-phone-number') msg = 'Invalid phone number format. Please check and try again.';
+        else if (err.code === 'auth/invalid-verification-code') msg = 'Incorrect code. Please check and try again.';
+        else if (err.code === 'auth/code-expired') msg = 'Code has expired. Please request a new one.';
+        return msg;
     }
 
     /* ================================================================
-     *  OTP digit input behaviour
+     *  OTP digit input behaviour (reusable)
      * ============================================================= */
-
-    $otpDigits
-        .on('input', function () {
-            const $this = $(this);
-            const val   = $this.val().replace(/\D/g, '');
-            $this.val(val);
-            // Auto-advance to next digit.
-            if (val && $this.next('.lawha-otp-digit').length) {
-                $this.next('.lawha-otp-digit').focus();
-            }
-            // Auto-submit when all 6 entered.
-            updateVerifyButton();
-        })
-        .on('keydown', function (e) {
-            const $this = $(this);
-            if (e.key === 'Backspace' && !$this.val() && $this.prev('.lawha-otp-digit').length) {
-                $this.prev('.lawha-otp-digit').focus();
-            }
-        })
-        .on('paste', function (e) {
-            e.preventDefault();
-            const paste = (e.originalEvent.clipboardData || window.clipboardData)
-                            .getData('text').replace(/\D/g, '').substring(0, 6);
-            paste.split('').forEach(function (ch, i) {
-                if ($otpDigits[i]) $($otpDigits[i]).val(ch);
+    function bindOtpInputs($digits, onComplete) {
+        $digits
+            .on('input', function () {
+                var $this = $(this);
+                var val   = $this.val().replace(/\D/g, '');
+                $this.val(val);
+                if (val && $this.next('.lawha-otp-digit').length) {
+                    $this.next('.lawha-otp-digit').focus();
+                }
+                if (onComplete) onComplete();
+            })
+            .on('keydown', function (e) {
+                var $this = $(this);
+                if (e.key === 'Backspace' && !$this.val() && $this.prev('.lawha-otp-digit').length) {
+                    $this.prev('.lawha-otp-digit').focus();
+                }
+            })
+            .on('paste', function (e) {
+                e.preventDefault();
+                var paste = (e.originalEvent.clipboardData || window.clipboardData)
+                                .getData('text').replace(/\D/g, '').substring(0, 6);
+                paste.split('').forEach(function (ch, i) {
+                    if ($digits[i]) $($digits[i]).val(ch);
+                });
+                if (onComplete) onComplete();
             });
-            updateVerifyButton();
-            if (paste.length === 6) $verifyBtn.focus();
-        });
+    }
 
-    function getOtpCode() {
-        let code = '';
-        $otpDigits.each(function () { code += $(this).val(); });
+    function getOtpCode($digits) {
+        var code = '';
+        $digits.each(function () { code += $(this).val(); });
         return code;
     }
 
-    function resetOtpInputs() {
-        $otpDigits.val('');
-        updateVerifyButton();
-    }
-
-    function updateVerifyButton() {
-        $verifyBtn.prop('disabled', getOtpCode().length !== 6);
+    function resetOtpInputs($digits) {
+        $digits.val('');
     }
 
     /* ================================================================
-     *  Timer
+     *  Timer (reusable)
      * ============================================================= */
+    function createTimer($timerEl, $resendBtn) {
+        var interval = null;
 
-    function startTimer() {
-        clearTimer();
-        let seconds = parseInt(wfpl_config.otp_expiration, 10) || 120;
-        $resendBtn.hide();
-        $timerEl.show();
-        updateTimerText(seconds);
+        function formatTime(seconds) {
+            var m = String(Math.floor(seconds / 60)).padStart(2, '0');
+            var s = String(seconds % 60).padStart(2, '0');
+            var tmpl = (typeof wfpl_config !== 'undefined' && wfpl_config.i18n && wfpl_config.i18n.resend_in) || 'Resend in %s';
+            return tmpl.replace('%s', m + ':' + s);
+        }
 
-        timerInterval = setInterval(function () {
-            seconds--;
-            if (seconds <= 0) {
-                clearTimer();
-                $timerEl.hide();
-                $resendBtn.fadeIn(200);
-            } else {
-                updateTimerText(seconds);
+        return {
+            start: function () {
+                this.clear();
+                var seconds = (typeof wfpl_config !== 'undefined' && parseInt(wfpl_config.otp_expiration, 10)) || 120;
+                $resendBtn.hide();
+                $timerEl.show().text(formatTime(seconds));
+
+                interval = setInterval(function () {
+                    seconds--;
+                    if (seconds <= 0) {
+                        clearInterval(interval);
+                        interval = null;
+                        $timerEl.hide();
+                        $resendBtn.fadeIn(200);
+                    } else {
+                        $timerEl.text(formatTime(seconds));
+                    }
+                }, 1000);
+            },
+            clear: function () {
+                if (interval) { clearInterval(interval); interval = null; }
             }
-        }, 1000);
-    }
-
-    function clearTimer() {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        }
-    }
-
-    function updateTimerText(seconds) {
-        var m = String(Math.floor(seconds / 60)).padStart(2, '0');
-        var s = String(seconds % 60).padStart(2, '0');
-        var tmpl = (wfpl_config.i18n && wfpl_config.i18n.resend_in) || 'Resend in %s';
-        $timerEl.text(tmpl.replace('%s', m + ':' + s));
+        };
     }
 
     /* ================================================================
-     *  Send OTP
+     *  1. REGISTRATION — Phone OTP Inline Verification
      * ============================================================= */
+    (function initRegPhone() {
+        var $regPhone   = $('#reg_phone');
+        var $sendBtn    = $('#lawhaRegSendOtp');
+        var $otpWrap    = $('#lawhaRegOtpWrap');
+        var $verifyBtn  = $('#lawhaRegVerifyOtp');
+        var $statusEl   = $('#lawhaRegPhoneStatus');
+        var $hiddenFlag = $('#lawha_phone_verified');
+        var $resendBtn  = $('#lawhaRegResendOtp');
+        var $timerEl    = $('#lawhaRegResendTimer');
+        var $digits     = $('.lawha-reg-otp-digit');
 
-    $sendBtn.on('click', async function () {
-        var phone = iti ? iti.getNumber() : $phoneInput.val();
+        if (!$regPhone.length || !$sendBtn.length) return;
 
-        if (!phone || phone.length < 8) {
-            showMsg(
-                (wfpl_config.i18n && wfpl_config.i18n.invalid_phone) || 'Please enter a valid phone number.',
-                'error'
-            );
-            return;
+        var regIti        = initIti($regPhone[0]);
+        var regTimer      = createTimer($timerEl, $resendBtn);
+        var regPhone      = '';
+        var phoneVerified = false;
+
+        function updateVerifyBtn() {
+            $verifyBtn.prop('disabled', getOtpCode($digits).length !== 6);
         }
 
-        currentPhone = phone;
-        setLoading($sendBtn, true);
-        clearMsg();
+        bindOtpInputs($digits, updateVerifyBtn);
 
-        try {
-            var recaptchaEl = document.getElementById('lawha-recaptcha');
-            await WFPL.sendOTP(phone, recaptchaEl);
-
-            showMsg(
-                (wfpl_config.i18n && wfpl_config.i18n.otp_sent) || 'Verification code sent!',
-                'success'
-            );
-            $phoneDisplay.text(phone);
-            switchStep('otp');
-            startTimer();
-            $otpDigits.first().focus();
-        } catch (err) {
-            console.error('[LAWHA Phone Auth]', err);
-            var msg = err.message || (wfpl_config.i18n && wfpl_config.i18n.otp_failed) || 'Failed to send code. Please try again.';
-
-            // Friendlier Firebase error messages.
-            if (err.code === 'auth/too-many-requests') {
-                msg = 'Too many attempts. Please wait a few minutes and try again.';
-            } else if (err.code === 'auth/invalid-phone-number') {
-                msg = 'Invalid phone number format. Please check and try again.';
+        /* Send OTP */
+        $sendBtn.on('click', async function () {
+            var phone = regIti ? regIti.getNumber() : $regPhone.val();
+            if (!phone || phone.length < 8) {
+                showMsg('Please enter a valid phone number.', 'error');
+                return;
             }
 
-            showMsg(msg, 'error');
-        } finally {
-            setLoading($sendBtn, false);
-        }
-    });
+            regPhone = phone;
+            setLoading($sendBtn, true);
+            clearMsg();
 
-    /* ================================================================
-     *  Verify OTP
-     * ============================================================= */
-
-    $verifyBtn.on('click', async function () {
-        var code = getOtpCode();
-        if (code.length !== 6) {
-            showMsg(
-                (wfpl_config.i18n && wfpl_config.i18n.enter_otp) || 'Please enter the 6-digit code.',
-                'error'
-            );
-            return;
-        }
-
-        setLoading($verifyBtn, true);
-        clearMsg();
-
-        try {
-            var credential = await WFPL.verifyOTP(code);
-            var idToken    = await credential.user.getIdToken();
-
-            showMsg(
-                (wfpl_config.i18n && wfpl_config.i18n.verifying) || 'Verifying…',
-                'info'
-            );
-
-            var result = await WFPL.login(idToken);
-
-            // Success!
-            clearTimer();
-            switchStep('success');
-
-            $(document).trigger('lawha:phone_login_success', [{ phone: currentPhone, result: result }]);
-
-            // Redirect after a short delay.
-            setTimeout(function () {
-                window.location.href = result.redirect_url || wfpl_config.redirect_url || wfpl_config.myaccount_url || '/my-account/';
-            }, 1200);
-
-        } catch (err) {
-            console.error('[LAWHA Phone Auth]', err);
-            var msg = err.message || (wfpl_config.i18n && wfpl_config.i18n.verify_failed) || 'Verification failed. Please try again.';
-
-            if (err.code === 'auth/invalid-verification-code') {
-                msg = 'Incorrect code. Please check and try again.';
-            } else if (err.code === 'auth/code-expired') {
-                msg = 'Code has expired. Please request a new one.';
+            try {
+                var recaptchaEl = document.getElementById('lawha-recaptcha');
+                await WFPL.sendOTP(phone, recaptchaEl);
+                showMsg('Verification code sent to ' + phone, 'success');
+                $otpWrap.slideDown(250);
+                regTimer.start();
+                $digits.first().focus();
+            } catch (err) {
+                console.error('[LAWHA Reg OTP]', err);
+                showMsg(friendlyError(err), 'error');
+            } finally {
+                setLoading($sendBtn, false);
             }
-
-            showMsg(msg, 'error');
-            resetOtpInputs();
-            $otpDigits.first().focus();
-        } finally {
-            setLoading($verifyBtn, false);
-        }
-    });
-
-    /* ================================================================
-     *  Back / Resend / Panel toggles
-     * ============================================================= */
-
-    $backBtn.on('click', function () {
-        clearTimer();
-        clearMsg();
-        resetOtpInputs();
-        switchStep('phone');
-        // Reset reCAPTCHA so a new one is created next time.
-        if (WFPL._resetRecaptcha) WFPL._resetRecaptcha();
-    });
-
-    $resendBtn.on('click', async function () {
-        $resendBtn.hide();
-        clearMsg();
-
-        try {
-            var recaptchaEl = document.getElementById('lawha-recaptcha');
-            // Reset reCAPTCHA verifier for a fresh attempt.
-            if (WFPL._resetRecaptcha) WFPL._resetRecaptcha();
-            await WFPL.sendOTP(currentPhone, recaptchaEl);
-            showMsg(
-                (wfpl_config.i18n && wfpl_config.i18n.otp_sent) || 'Verification code sent!',
-                'success'
-            );
-            startTimer();
-            resetOtpInputs();
-            $otpDigits.first().focus();
-        } catch (err) {
-            showMsg(
-                err.message || (wfpl_config.i18n && wfpl_config.i18n.otp_failed) || 'Failed to resend code.',
-                'error'
-            );
-            $resendBtn.show();
-        }
-    });
-
-    // Toggle phone ↔ email panels.
-    $showEmail.on('click', function () {
-        $phoneStep.hide();
-        $otpStep.hide();
-        $successStep.hide();
-        $(this).hide();
-        $('.lawha-auth__divider').hide();
-        $emailPanel.slideDown(250);
-        clearMsg();
-        clearTimer();
-    });
-
-    $showPhone.on('click', function () {
-        $emailPanel.slideUp(250, function () {
-            switchStep('phone');
-            $showEmail.show();
-            $('.lawha-auth__divider').show();
         });
-        clearMsg();
-    });
+
+        /* Verify OTP */
+        $verifyBtn.on('click', async function () {
+            var code = getOtpCode($digits);
+            if (code.length !== 6) return;
+
+            setLoading($verifyBtn, true);
+            clearMsg();
+
+            try {
+                var credential = await WFPL.verifyOTP(code);
+                // Successful verification — store in session via AJAX.
+                var idToken = await credential.user.getIdToken();
+
+                await $.ajax({
+                    url: lawhaAuth.ajax_url,
+                    method: 'POST',
+                    data: {
+                        action: 'lawha_store_otp_verification',
+                        nonce:  lawhaAuth.nonce,
+                        phone:  regPhone
+                    }
+                });
+
+                phoneVerified = true;
+                $hiddenFlag.val('1');
+                regTimer.clear();
+                $otpWrap.slideUp(200);
+                $sendBtn.hide();
+                $statusEl.html('✓ Phone verified').addClass('is-verified').show();
+                $regPhone.prop('readonly', true);
+                showMsg('Phone number verified successfully!', 'success');
+            } catch (err) {
+                console.error('[LAWHA Reg OTP Verify]', err);
+                showMsg(friendlyError(err), 'error');
+                resetOtpInputs($digits);
+                $digits.first().focus();
+            } finally {
+                setLoading($verifyBtn, false);
+            }
+        });
+
+        /* Resend OTP */
+        $resendBtn.on('click', async function () {
+            $resendBtn.hide();
+            clearMsg();
+            try {
+                if (WFPL._resetRecaptcha) WFPL._resetRecaptcha();
+                var recaptchaEl = document.getElementById('lawha-recaptcha');
+                await WFPL.sendOTP(regPhone, recaptchaEl);
+                showMsg('Verification code re-sent!', 'success');
+                regTimer.start();
+                resetOtpInputs($digits);
+                $digits.first().focus();
+            } catch (err) {
+                showMsg(friendlyError(err), 'error');
+                $resendBtn.show();
+            }
+        });
+
+        /* Prevent submit if phone not verified */
+        $('#lawhaRegisterForm').on('submit', function (e) {
+            if (!phoneVerified && $sendBtn.length) {
+                e.preventDefault();
+                showMsg('Please verify your phone number before creating your account.', 'error');
+                $regPhone.focus();
+            }
+        });
+    })();
+
 
     /* ================================================================
-     *  Keyboard: Enter key triggers verify
+     *  2. FORGOT PASSWORD — OTP-based Reset
      * ============================================================= */
+    (function initForgotPassword() {
+        var $forgotPhone    = $('#forgot_phone');
+        var $sendBtn        = $('#lawhaForgotSendOtp');
+        var $phoneStep      = $('#lawhaForgotPhoneStep');
+        var $otpStep        = $('#lawhaForgotOtpStep');
+        var $newPwStep      = $('#lawhaForgotNewPwStep');
+        var $successStep    = $('#lawhaForgotSuccessStep');
+        var $phoneDisplay   = $('#lawhaForgotPhoneDisplay');
+        var $verifyBtn      = $('#lawhaForgotVerifyOtp');
+        var $resendBtn      = $('#lawhaForgotResendOtp');
+        var $timerEl        = $('#lawhaForgotResendTimer');
+        var $resetPwBtn     = $('#lawhaForgotResetPw');
+        var $digits         = $('.lawha-forgot-otp-digit');
 
-    $otpDigits.last().on('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            $verifyBtn.trigger('click');
-        }
-    });
+        if (!$forgotPhone.length) return;
 
-    $phoneInput.on('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            $sendBtn.trigger('click');
+        var forgotIti     = initIti($forgotPhone[0]);
+        var forgotTimer   = createTimer($timerEl, $resendBtn);
+        var forgotPhone   = '';
+        var forgotIdToken = '';
+
+        function updateVerifyBtn() {
+            $verifyBtn.prop('disabled', getOtpCode($digits).length !== 6);
         }
-    });
+
+        bindOtpInputs($digits, updateVerifyBtn);
+
+        function showStep(which) {
+            $phoneStep.hide();
+            $otpStep.hide();
+            $newPwStep.hide();
+            $successStep.hide();
+            which.fadeIn(250);
+        }
+
+        /* Step 1: Check phone then send OTP */
+        $sendBtn.on('click', async function () {
+            var phone = forgotIti ? forgotIti.getNumber() : $forgotPhone.val();
+            if (!phone || phone.length < 8) {
+                showMsg('Please enter a valid phone number.', 'error');
+                return;
+            }
+
+            setLoading($sendBtn, true);
+            clearMsg();
+
+            try {
+                // First check if phone has an account.
+                var checkResult = await $.ajax({
+                    url: lawhaAuth.ajax_url,
+                    method: 'POST',
+                    data: {
+                        action: 'lawha_forgot_check_phone',
+                        nonce:  lawhaAuth.nonce,
+                        phone:  phone
+                    }
+                });
+
+                if (!checkResult.success) {
+                    showMsg(checkResult.data.message || 'No account found with this phone number.', 'error');
+                    return;
+                }
+
+                forgotPhone = phone;
+
+                // Send OTP via Firebase.
+                var recaptchaEl = document.getElementById('lawha-recaptcha-forgot');
+                await WFPL.sendOTP(phone, recaptchaEl);
+
+                showMsg('Verification code sent!', 'success');
+                $phoneDisplay.text(phone);
+                showStep($otpStep);
+                forgotTimer.start();
+                $digits.first().focus();
+            } catch (err) {
+                console.error('[LAWHA Forgot OTP]', err);
+                showMsg(friendlyError(err), 'error');
+            } finally {
+                setLoading($sendBtn, false);
+            }
+        });
+
+        /* Step 2: Verify OTP */
+        $verifyBtn.on('click', async function () {
+            var code = getOtpCode($digits);
+            if (code.length !== 6) return;
+
+            setLoading($verifyBtn, true);
+            clearMsg();
+
+            try {
+                var credential = await WFPL.verifyOTP(code);
+                forgotIdToken = await credential.user.getIdToken();
+                forgotTimer.clear();
+                showMsg('Phone verified! Set your new password.', 'success');
+                showStep($newPwStep);
+            } catch (err) {
+                console.error('[LAWHA Forgot Verify]', err);
+                showMsg(friendlyError(err), 'error');
+                resetOtpInputs($digits);
+                $digits.first().focus();
+            } finally {
+                setLoading($verifyBtn, false);
+            }
+        });
+
+        /* Step 3: Reset password */
+        $resetPwBtn.on('click', async function () {
+            var newPw      = $('#forgot_new_password').val();
+            var confirmPw  = $('#forgot_confirm_password').val();
+
+            if (!newPw || newPw.length < 8) {
+                showMsg('Password must be at least 8 characters.', 'error');
+                return;
+            }
+            if (newPw !== confirmPw) {
+                showMsg('Passwords do not match.', 'error');
+                return;
+            }
+
+            setLoading($resetPwBtn, true);
+            clearMsg();
+
+            try {
+                var result = await $.ajax({
+                    url: lawhaAuth.ajax_url,
+                    method: 'POST',
+                    data: {
+                        action:       'lawha_forgot_reset_password',
+                        nonce:        lawhaAuth.nonce,
+                        phone:        forgotPhone,
+                        new_password: newPw,
+                        id_token:     forgotIdToken
+                    }
+                });
+
+                if (!result.success) {
+                    showMsg(result.data.message || 'Failed to reset password.', 'error');
+                    return;
+                }
+
+                showStep($successStep);
+                showMsg('Password reset successfully!', 'success');
+
+                // Redirect to login after 2 seconds.
+                setTimeout(function () {
+                    var backBtn = document.getElementById('lawhaBackToLogin');
+                    if (backBtn) backBtn.click();
+                }, 2000);
+            } catch (err) {
+                console.error('[LAWHA Forgot Reset]', err);
+                showMsg('Failed to reset password. Please try again.', 'error');
+            } finally {
+                setLoading($resetPwBtn, false);
+            }
+        });
+
+        /* Resend OTP */
+        $resendBtn.on('click', async function () {
+            $resendBtn.hide();
+            clearMsg();
+            try {
+                if (WFPL._resetRecaptcha) WFPL._resetRecaptcha();
+                var recaptchaEl = document.getElementById('lawha-recaptcha-forgot');
+                await WFPL.sendOTP(forgotPhone, recaptchaEl);
+                showMsg('Verification code re-sent!', 'success');
+                forgotTimer.start();
+                resetOtpInputs($digits);
+                $digits.first().focus();
+            } catch (err) {
+                showMsg(friendlyError(err), 'error');
+                $resendBtn.show();
+            }
+        });
+    })();
+
+
+    /* ================================================================
+     *  3. EMAIL VERIFICATION BANNER — Resend
+     * ============================================================= */
+    (function initEmailVerify() {
+        var $resendBtn = $('#lawhaResendVerifyEmail');
+        if (!$resendBtn.length) return;
+
+        $resendBtn.on('click', function () {
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Sending…');
+
+            $.ajax({
+                url: lawhaAuth.ajax_url,
+                method: 'POST',
+                data: {
+                    action: 'lawha_resend_verification_email',
+                    nonce:  lawhaAuth.nonce
+                },
+                success: function (res) {
+                    if (res.success) {
+                        $btn.text('Email Sent!');
+                        setTimeout(function () { $btn.prop('disabled', false).text('Resend Email'); }, 60000);
+                    } else {
+                        $btn.prop('disabled', false).text('Resend Email');
+                        alert(res.data.message || 'Please wait before requesting another email.');
+                    }
+                },
+                error: function () {
+                    $btn.prop('disabled', false).text('Resend Email');
+                }
+            });
+        });
+    })();
 
 })(jQuery);
