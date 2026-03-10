@@ -72,3 +72,23 @@ function wfpl_is_phone_registered( $phone ) {
 function wfpl_is_rate_limited( $phone ) {
     return \WFPL\Helpers::is_rate_limited( $phone );
 }
+
+/**
+ * Get a plugin option value.
+ *
+ * @param string $key     Option key (without wfpl_ prefix).
+ * @param mixed  $default Default value.
+ * @return mixed
+ */
+function wfpl_get_option( $key, $default = '' ) {
+    return \WFPL\Helpers::get_option( $key, $default );
+}
+
+/**
+ * Check if Firebase phone authentication is configured.
+ *
+ * @return bool
+ */
+function wfpl_is_firebase_configured() {
+    return \WFPL\Helpers::is_firebase_configured();
+}
