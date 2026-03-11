@@ -72,6 +72,15 @@ class Asset_Loader {
             true
         );
 
+        // Phone Auth UI — registration OTP, forgot-password flow, etc.
+        wp_enqueue_script(
+            'phone-auth-ui',
+            WFPL_PLUGIN_URL . 'assets/js/phone-auth-ui.js',
+            array( 'jquery', 'phone-auth-sdk', 'intl-tel-input' ),
+            WFPL_VERSION,
+            true
+        );
+
         // Localize with config.
         $firebase_config = \PhoneAuth\OTP\Send_OTP::get_firebase_config();
 
@@ -101,22 +110,18 @@ class Asset_Loader {
      * @return bool
      */
     private static function should_load() {
-        // Don't load for logged-in users (they don't need auth UI).
-        if ( is_user_logged_in() ) {
-            return false;
-        }
-
         // Must have Firebase configured.
         if ( ! \PhoneAuth\OTP\Send_OTP::is_firebase_configured() ) {
             return false;
         }
 
-        // Load on My Account and checkout pages.
+        // Load on My Account page (for guests: login/register, for logged-in: email verify banner).
         if ( function_exists( 'is_account_page' ) && is_account_page() ) {
             return true;
         }
 
-        if ( function_exists( 'is_checkout' ) && is_checkout() ) {
+        // Load on checkout for guests only.
+        if ( ! is_user_logged_in() && function_exists( 'is_checkout' ) && is_checkout() ) {
             return true;
         }
 

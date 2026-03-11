@@ -107,10 +107,10 @@ class Settings_Page {
             ),
 
             array(
-                'title'   => __( 'Auto Create Account', 'woo-firebase-phone-login' ),
-                'desc'    => __( 'Automatically create an account when a new phone number is verified.', 'woo-firebase-phone-login' ),
+                'title'   => __( 'Auto Create Account (Legacy)', 'woo-firebase-phone-login' ),
+                'desc'    => __( 'Deprecated: Login no longer auto-creates accounts. Users must register explicitly via the registration form.', 'woo-firebase-phone-login' ),
                 'id'      => 'wfpl_auto_create_account',
-                'default' => 'yes',
+                'default' => 'no',
                 'type'    => 'checkbox',
             ),
 
@@ -227,7 +227,7 @@ class Settings_Page {
      * @return array
      */
     public function add_phone_column( $columns ) {
-        $columns['wfpl_phone'] = __( 'Phone', 'woo-firebase-phone-login' );
+        $columns['billing_phone'] = __( 'Phone', 'woo-firebase-phone-login' );
         return $columns;
     }
 
@@ -240,7 +240,7 @@ class Settings_Page {
      * @return string
      */
     public function render_phone_column( $value, $column_name, $user_id ) {
-        if ( 'wfpl_phone' === $column_name ) {
+        if ( 'billing_phone' === $column_name ) {
             $phone = get_user_meta( $user_id, 'billing_phone', true );
             return $phone ? esc_html( $phone ) : '—';
         }

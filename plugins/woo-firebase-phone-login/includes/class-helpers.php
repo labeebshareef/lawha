@@ -31,7 +31,7 @@ class Helpers {
         'enable_login'          => 'yes',
         'enable_registration'   => 'yes',
         'enable_checkout_login' => 'yes',
-        'auto_create_account'   => 'yes',
+        'auto_create_account'   => 'no',
         'enable_popup'          => 'no',
         'headless_mode'         => 'no',
     );

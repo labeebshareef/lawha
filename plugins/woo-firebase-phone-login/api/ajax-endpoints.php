@@ -248,21 +248,21 @@ class Ajax_Endpoints {
         }
 
         // Verify Firebase token to confirm OTP was completed.
-        if ( ! empty( $id_token ) ) {
-            $payload = \PhoneAuth\OTP\Verify_OTP::verify_id_token( $id_token );
-            if ( is_wp_error( $payload ) ) {
-                wp_send_json_error( array( 'message' => __( 'OTP verification failed. Please try again.', 'woo-firebase-phone-login' ) ), 400 );
-            }
-            $token_phone = isset( $payload['phone_number'] ) ? $payload['phone_number'] : '';
-            $normalized  = \PhoneAuth\Database\Phone_Lookup::normalize_phone( $phone );
-            if ( $token_phone !== $normalized ) {
-                wp_send_json_error( array( 'message' => __( 'Phone number mismatch.', 'woo-firebase-phone-login' ) ), 400 );
-            }
-        } else {
+        if ( empty( $id_token ) ) {
             wp_send_json_error( array( 'message' => __( 'Verification token is required.', 'woo-firebase-phone-login' ) ), 400 );
         }
 
-        $normalized = \PhoneAuth\Database\Phone_Lookup::normalize_phone( $phone );
+        $payload = \PhoneAuth\OTP\Verify_OTP::verify_id_token( $id_token );
+        if ( is_wp_error( $payload ) ) {
+            wp_send_json_error( array( 'message' => __( 'OTP verification failed. Please try again.', 'woo-firebase-phone-login' ) ), 400 );
+        }
+
+        $normalized  = \PhoneAuth\Database\Phone_Lookup::normalize_phone( $phone );
+        $token_phone = isset( $payload['phone_number'] ) ? $payload['phone_number'] : '';
+        if ( $token_phone !== $normalized ) {
+            wp_send_json_error( array( 'message' => __( 'Phone number mismatch.', 'woo-firebase-phone-login' ) ), 400 );
+        }
+
         $user = \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $normalized );
 
         if ( ! $user ) {

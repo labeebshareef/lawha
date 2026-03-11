@@ -813,7 +813,7 @@ function lawha_validate_registration( $username, $email, $errors ) {
     }
 
     // Check for duplicate phone number.
-    $normalized = lawha_normalize_phone( $phone );
+    $normalized = \PhoneAuth\Database\Phone_Lookup::normalize_phone( $phone );
     $existing = get_users( array(
         'meta_key'   => 'billing_phone',
         'meta_value' => $normalized,
@@ -885,7 +885,7 @@ function lawha_save_registration_data( $customer_id ) {
     }
 
     if ( $phone ) {
-        $normalized = lawha_normalize_phone( $phone );
+        $normalized = \PhoneAuth\Database\Phone_Lookup::normalize_phone( $phone );
         update_user_meta( $customer_id, 'billing_phone', $normalized );
         update_user_meta( $customer_id, 'phone_verified', 1 );
     }
@@ -903,88 +903,31 @@ add_action( 'woocommerce_created_customer', 'lawha_save_registration_data', 10, 
 
 /**
  * Normalize a phone number to E.164 format.
+ * Delegates to the plugin's normalizer. Kept as a convenience wrapper.
  *
  * @param  string $phone Raw phone input.
  * @return string        Normalized E.164 phone.
  */
 function lawha_normalize_phone( $phone ) {
+    if ( class_exists( '\\PhoneAuth\\Database\\Phone_Lookup' ) ) {
+        return \PhoneAuth\Database\Phone_Lookup::normalize_phone( $phone );
+    }
+
+    // Minimal fallback if plugin is not active.
     $has_plus = ( substr( trim( $phone ), 0, 1 ) === '+' );
     $digits   = preg_replace( '/[^\d]/', '', $phone );
-
     if ( empty( $digits ) ) {
         return $phone;
     }
-
-    if ( $has_plus ) {
-        return '+' . $digits;
-    }
-
-    // International prefix 00 → +
-    if ( substr( $digits, 0, 2 ) === '00' ) {
-        return '+' . substr( $digits, 2 );
-    }
-
-    // UAE local: 05XXXXXXXX (10 digits starting with 0) → +9715XXXXXXXX
-    if ( strlen( $digits ) === 10 && substr( $digits, 0, 2 ) === '05' ) {
-        return '+971' . substr( $digits, 1 );
-    }
-
-    // UAE without leading zero: 5XXXXXXXX (9 digits starting with 5) → +9715XXXXXXXX
-    if ( strlen( $digits ) === 9 && substr( $digits, 0, 1 ) === '5' ) {
-        return '+971' . $digits;
-    }
-
-    // Indian local: 0XXXXXXXXXX (11 digits starting with 0) → +91XXXXXXXXXX
-    if ( substr( $digits, 0, 1 ) === '0' && strlen( $digits ) === 11 ) {
-        return '+91' . substr( $digits, 1 );
-    }
-
-    // Indian 10-digit (not starting with 5, to avoid UAE collision)
-    if ( strlen( $digits ) === 10 && substr( $digits, 0, 1 ) !== '5' ) {
-        return '+91' . $digits;
-    }
-
-    return '+' . $digits;
+    return $has_plus ? '+' . $digits : '+' . $digits;
 }
 
 
 /* =========================================
    PHONE-FIRST AUTHENTICATION ASSETS
    ========================================= */
-
-/**
- * Enqueue phone-auth.js on account & checkout pages
- * when the WFPL plugin is active in headless mode.
- */
-function lawha_enqueue_phone_auth() {
-    if ( ! function_exists( 'wfpl_is_firebase_configured' ) || ! wfpl_is_firebase_configured() ) {
-        return;
-    }
-
-    // Load on My Account (login/register) and checkout pages for guests.
-    $is_auth_page = ( function_exists( 'is_account_page' ) && is_account_page() )
-                 || ( function_exists( 'is_checkout' ) && is_checkout() );
-
-    if ( ! $is_auth_page ) {
-        return;
-    }
-
-    // The plugin (headless mode) enqueues firebase SDK + intl-tel-input
-    // as 'phone-auth-sdk'. Our script depends on it.
-    wp_enqueue_script(
-        'lawha-phone-auth',
-        LAWHA_URI . '/js/phone-auth.js',
-        array( 'jquery', 'phone-auth-sdk' ),
-        lawha_get_asset_version( 'js/phone-auth.js' ),
-        array( 'in_footer' => true )
-    );
-
-    wp_localize_script( 'lawha-phone-auth', 'lawhaAuth', array(
-        'ajax_url' => admin_url( 'admin-ajax.php' ),
-        'nonce'    => wp_create_nonce( 'lawha_wc_nonce' ),
-    ) );
-}
-add_action( 'wp_enqueue_scripts', 'lawha_enqueue_phone_auth', 20 );
+// Phone-auth JS is now enqueued by the woo-firebase-phone-login plugin
+// via PhoneAuth\UI\Asset_Loader. No theme enqueue needed.
 
 
 /* =========================================
@@ -1045,7 +988,7 @@ function lawha_authenticate_by_phone( $user, $username, $password ) {
         return $user;
     }
 
-    $normalized = lawha_normalize_phone( $cleaned );
+    $normalized = \PhoneAuth\Database\Phone_Lookup::normalize_phone( $cleaned );
 
     $found_user = \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $normalized );
 
@@ -1061,127 +1004,12 @@ add_filter( 'authenticate', 'lawha_authenticate_by_phone', 20, 3 );
 
 
 /* =========================================
-   REGISTRATION OTP SESSION HANDLER (AJAX)
+   REGISTRATION/FORGOT-PASSWORD OTP HANDLERS
    ========================================= */
-
-/**
- * Store verified phone in session when OTP is verified during registration.
- * Called via AJAX from the registration form.
- * SECURITY: Requires a valid Firebase ID token to prevent OTP bypass.
- */
-function lawha_ajax_store_otp_verification() {
-    check_ajax_referer( 'lawha_wc_nonce', 'nonce' );
-
-    $phone = isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '';
-    if ( empty( $phone ) ) {
-        wp_send_json_error( array( 'message' => 'Phone number is required.' ) );
-    }
-
-    // Verify Firebase ID token to confirm OTP was genuinely completed.
-    $firebase_token = isset( $_POST['firebase_token'] ) ? sanitize_text_field( wp_unslash( $_POST['firebase_token'] ) ) : '';
-    if ( empty( $firebase_token ) ) {
-        wp_send_json_error( array( 'message' => 'Verification token is required.' ) );
-    }
-
-    $payload = \PhoneAuth\OTP\Verify_OTP::verify_id_token( $firebase_token );
-    if ( is_wp_error( $payload ) ) {
-        wp_send_json_error( array( 'message' => 'Phone verification failed. Please try again.' ) );
-    }
-    // Ensure the token's phone matches the submitted phone.
-    $token_phone = isset( $payload['phone_number'] ) ? $payload['phone_number'] : '';
-    $normalized  = lawha_normalize_phone( $phone );
-    if ( $token_phone !== $normalized ) {
-        wp_send_json_error( array( 'message' => 'Phone number mismatch. Please verify the correct number.' ) );
-    }
-
-    if ( ! WC()->session ) {
-        WC()->initialize_session();
-    }
-    // Ensure session cookie is set for guests so data persists to form POST.
-    if ( method_exists( WC()->session, 'has_session' ) && ! WC()->session->has_session() ) {
-        WC()->session->set_customer_session_cookie( true );
-    }
-    WC()->session->set( 'phone_auth_verified_phone', $normalized );
-    WC()->session->set( 'phone_auth_verified_at', time() );
-
-    wp_send_json_success( array( 'phone' => $normalized ) );
-}
-add_action( 'wp_ajax_lawha_store_otp_verification', 'lawha_ajax_store_otp_verification' );
-add_action( 'wp_ajax_nopriv_lawha_store_otp_verification', 'lawha_ajax_store_otp_verification' );
-
-
-/* =========================================
-   FORGOT PASSWORD VIA OTP (AJAX)
-   ========================================= */
-
-/**
- * Check if a phone number is associated with an account.
- */
-function lawha_ajax_forgot_check_phone() {
-    check_ajax_referer( 'lawha_wc_nonce', 'nonce' );
-
-    $phone = isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '';
-    if ( empty( $phone ) ) {
-        wp_send_json_error( array( 'message' => 'Phone number is required.' ) );
-    }
-
-    $normalized = lawha_normalize_phone( $phone );
-    $user = \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $normalized );
-
-    if ( ! $user ) {
-        wp_send_json_error( array( 'message' => 'No account found with this phone number.' ) );
-    }
-
-    wp_send_json_success( array( 'found' => true ) );
-}
-add_action( 'wp_ajax_lawha_forgot_check_phone', 'lawha_ajax_forgot_check_phone' );
-add_action( 'wp_ajax_nopriv_lawha_forgot_check_phone', 'lawha_ajax_forgot_check_phone' );
-
-/**
- * Reset password after OTP verification.
- */
-function lawha_ajax_forgot_reset_password() {
-    check_ajax_referer( 'lawha_wc_nonce', 'nonce' );
-
-    $phone        = isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '';
-    $new_password = isset( $_POST['new_password'] ) ? $_POST['new_password'] : '';
-    $id_token     = isset( $_POST['id_token'] ) ? sanitize_text_field( wp_unslash( $_POST['id_token'] ) ) : '';
-
-    if ( empty( $phone ) || empty( $new_password ) ) {
-        wp_send_json_error( array( 'message' => 'Phone and new password are required.' ) );
-    }
-
-    if ( strlen( $new_password ) < 8 ) {
-        wp_send_json_error( array( 'message' => 'Password must be at least 8 characters.' ) );
-    }
-
-    // Verify the Firebase ID token to ensure OTP was genuinely completed.
-    if ( empty( $id_token ) ) {
-        wp_send_json_error( array( 'message' => 'Verification token is required.' ) );
-    }
-
-    $payload = \PhoneAuth\OTP\Verify_OTP::verify_id_token( $id_token );
-    if ( is_wp_error( $payload ) ) {
-        wp_send_json_error( array( 'message' => 'OTP verification failed. Please try again.' ) );
-    }
-    $token_phone = isset( $payload['phone_number'] ) ? $payload['phone_number'] : '';
-    $normalized  = lawha_normalize_phone( $phone );
-    if ( $token_phone !== $normalized ) {
-        wp_send_json_error( array( 'message' => 'Phone number mismatch.' ) );
-    }
-
-    $user = \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $normalized );
-
-    if ( ! $user ) {
-        wp_send_json_error( array( 'message' => 'No account found with this phone number.' ) );
-    }
-
-    wp_set_password( $new_password, $user->ID );
-
-    wp_send_json_success( array( 'message' => 'Password reset successfully.' ) );
-}
-add_action( 'wp_ajax_lawha_forgot_reset_password', 'lawha_ajax_forgot_reset_password' );
-add_action( 'wp_ajax_nopriv_lawha_forgot_reset_password', 'lawha_ajax_forgot_reset_password' );
+// Moved to plugin: PhoneAuth\API\Ajax_Endpoints::handle_store_otp()
+// AJAX action: phone_auth_store_otp (was lawha_store_otp_verification)
+// AJAX action: phone_auth_forgot_check (was lawha_forgot_check_phone)
+// AJAX action: phone_auth_forgot_reset (was lawha_forgot_reset_password)
 
 
 /* =========================================

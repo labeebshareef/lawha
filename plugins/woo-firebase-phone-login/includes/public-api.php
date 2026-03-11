@@ -2,93 +2,57 @@
 /**
  * Global public API functions.
  *
- * These are convenience wrappers so developers can call
- * wfpl_verify_firebase_token(), wfpl_login_or_create_user(), etc.
+ * Convenience wrappers so developers can call
+ * wfpl_get_user_by_phone(), wfpl_is_phone_registered(), etc.
  * without touching namespaced classes.
  *
- * @package WFPL
+ * NOTE: This file is not auto-loaded. Require it manually if needed.
+ * The main plugin file (woo-firebase-phone-login.php) already defines
+ * wfpl_get_option() and wfpl_is_firebase_configured().
+ *
+ * @package PhoneAuth
  */
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Verify a Firebase ID token server-side.
- *
- * @param string $token Firebase ID token (JWT).
- * @return array|WP_Error Decoded payload or error.
- */
-function wfpl_verify_firebase_token( $token ) {
-    return \WFPL\Firebase_Auth::verify_id_token( $token );
+if ( ! function_exists( 'wfpl_verify_firebase_token' ) ) {
+    function wfpl_verify_firebase_token( $token ) {
+        return \PhoneAuth\OTP\Verify_OTP::verify_id_token( $token );
+    }
 }
 
-/**
- * Authenticate: verify token → login or create user.
- *
- * @param string $token Firebase ID token.
- * @return array|WP_Error { success, user_id, created, phone }
- */
-function wfpl_authenticate( $token ) {
-    return \WFPL\Auth_Controller::authenticate( $token );
+if ( ! function_exists( 'wfpl_authenticate' ) ) {
+    function wfpl_authenticate( $token ) {
+        return \PhoneAuth\Auth\Login_Controller::login( $token );
+    }
 }
 
-/**
- * Login or create a user by phone number.
- * NOTE: This bypasses Firebase token verification — use only when
- * you have already verified the phone through your own means.
- *
- * @param string $phone E.164 phone number.
- * @return array|WP_Error { user_id, created }
- */
-function wfpl_login_or_create_user( $phone ) {
-    return \WFPL\User_Handler::login_or_create( $phone );
+if ( ! function_exists( 'wfpl_get_user_by_phone' ) ) {
+    function wfpl_get_user_by_phone( $phone ) {
+        return \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $phone );
+    }
 }
 
-/**
- * Get WordPress user by phone number.
- *
- * @param string $phone E.164 phone number.
- * @return WP_User|false
- */
-function wfpl_get_user_by_phone( $phone ) {
-    return \WFPL\User_Handler::get_user_by_phone( $phone );
+if ( ! function_exists( 'wfpl_is_phone_registered' ) ) {
+    function wfpl_is_phone_registered( $phone ) {
+        return \PhoneAuth\Database\Phone_Lookup::is_phone_registered( $phone );
+    }
 }
 
-/**
- * Check if a phone number is already registered.
- *
- * @param string $phone E.164 phone number.
- * @return bool
- */
-function wfpl_is_phone_registered( $phone ) {
-    return \WFPL\User_Handler::is_phone_registered( $phone );
+if ( ! function_exists( 'wfpl_is_rate_limited' ) ) {
+    function wfpl_is_rate_limited( $phone ) {
+        return \PhoneAuth\OTP\Send_OTP::is_rate_limited( $phone );
+    }
 }
 
-/**
- * Check if the current phone is rate-limited.
- *
- * @param string $phone E.164 phone number.
- * @return bool
- */
-function wfpl_is_rate_limited( $phone ) {
-    return \WFPL\Helpers::is_rate_limited( $phone );
+if ( ! function_exists( 'wfpl_get_option' ) ) {
+    function wfpl_get_option( $key, $default = '' ) {
+        return get_option( 'wfpl_' . $key, $default );
+    }
 }
 
-/**
- * Get a plugin option value.
- *
- * @param string $key     Option key (without wfpl_ prefix).
- * @param mixed  $default Default value.
- * @return mixed
- */
-function wfpl_get_option( $key, $default = '' ) {
-    return \WFPL\Helpers::get_option( $key, $default );
-}
-
-/**
- * Check if Firebase phone authentication is configured.
- *
- * @return bool
- */
-function wfpl_is_firebase_configured() {
-    return \WFPL\Helpers::is_firebase_configured();
+if ( ! function_exists( 'wfpl_is_firebase_configured' ) ) {
+    function wfpl_is_firebase_configured() {
+        return \PhoneAuth\OTP\Send_OTP::is_firebase_configured();
+    }
 }
