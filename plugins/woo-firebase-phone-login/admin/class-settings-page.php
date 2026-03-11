@@ -241,7 +241,7 @@ class Settings_Page {
      */
     public function render_phone_column( $value, $column_name, $user_id ) {
         if ( 'wfpl_phone' === $column_name ) {
-            $phone = get_user_meta( $user_id, 'wfpl_phone', true );
+            $phone = get_user_meta( $user_id, 'billing_phone', true );
             return $phone ? esc_html( $phone ) : '—';
         }
         return $value;

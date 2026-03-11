@@ -11,7 +11,7 @@
  * @package LAWHA
  */
 
-/* global jQuery, WFPL, wfpl_config, lawhaAuth, intlTelInput */
+/* global jQuery, WFPL, phoneAuthConfig, wfpl_config, lawhaAuth, intlTelInput */
 
 (function ($) {
     'use strict';
@@ -127,14 +127,16 @@
         function formatTime(seconds) {
             var m = String(Math.floor(seconds / 60)).padStart(2, '0');
             var s = String(seconds % 60).padStart(2, '0');
-            var tmpl = (typeof wfpl_config !== 'undefined' && wfpl_config.i18n && wfpl_config.i18n.resend_in) || 'Resend in %s';
+            var cfg = (typeof phoneAuthConfig !== 'undefined') ? phoneAuthConfig : (typeof wfpl_config !== 'undefined') ? wfpl_config : null;
+            var tmpl = (cfg && cfg.i18n && cfg.i18n.resend_in) || 'Resend in %s';
             return tmpl.replace('%s', m + ':' + s);
         }
 
         return {
             start: function () {
                 this.clear();
-                var seconds = (typeof wfpl_config !== 'undefined' && parseInt(wfpl_config.otp_expiration, 10)) || 120;
+                var cfg = (typeof phoneAuthConfig !== 'undefined') ? phoneAuthConfig : (typeof wfpl_config !== 'undefined') ? wfpl_config : null;
+                var seconds = (cfg && parseInt(cfg.otp_expiration, 10)) || 120;
                 $resendBtn.hide();
                 $timerEl.show().text(formatTime(seconds));
 

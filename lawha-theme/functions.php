@@ -815,13 +815,10 @@ function lawha_validate_registration( $username, $email, $errors ) {
     // Check for duplicate phone number.
     $normalized = lawha_normalize_phone( $phone );
     $existing = get_users( array(
-        'meta_query' => array(
-            'relation' => 'OR',
-            array( 'key' => 'billing_phone', 'value' => $normalized ),
-            array( 'key' => 'wfpl_phone', 'value' => $normalized ),
-        ),
-        'number' => 1,
-        'fields' => 'ID',
+        'meta_key'   => 'billing_phone',
+        'meta_value' => $normalized,
+        'number'     => 1,
+        'fields'     => 'ID',
     ) );
     if ( ! empty( $existing ) ) {
         $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: An account with this phone number already exists. Please log in instead.', 'lawha' ) );
@@ -838,8 +835,8 @@ function lawha_validate_registration( $username, $email, $errors ) {
     $session_phone = '';
     $otp_verified_at = 0;
     if ( WC()->session ) {
-        $session_phone   = WC()->session->get( 'lawha_otp_verified_phone', '' );
-        $otp_verified_at = (int) WC()->session->get( 'lawha_otp_verified_at', 0 );
+        $session_phone   = WC()->session->get( 'phone_auth_verified_phone', '' );
+        $otp_verified_at = (int) WC()->session->get( 'phone_auth_verified_at', 0 );
     }
     if ( '1' !== $otp_flag || $session_phone !== $normalized ) {
         $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: Please verify your phone number with OTP before registering.', 'lawha' ) );
@@ -849,8 +846,8 @@ function lawha_validate_registration( $username, $email, $errors ) {
     // OTP session TTL: reject if verification was more than 10 minutes ago.
     if ( $otp_verified_at > 0 && ( time() - $otp_verified_at ) > 600 ) {
         // Clear stale session.
-        WC()->session->set( 'lawha_otp_verified_phone', '' );
-        WC()->session->set( 'lawha_otp_verified_at', 0 );
+        WC()->session->set( 'phone_auth_verified_phone', '' );
+        WC()->session->set( 'phone_auth_verified_at', 0 );
         $errors->add( 'lawha_reg_phone_error', __( '<strong>Error</strong>: Phone verification has expired. Please verify again.', 'lawha' ) );
         return;
     }
@@ -890,14 +887,13 @@ function lawha_save_registration_data( $customer_id ) {
     if ( $phone ) {
         $normalized = lawha_normalize_phone( $phone );
         update_user_meta( $customer_id, 'billing_phone', $normalized );
-        update_user_meta( $customer_id, 'wfpl_phone', $normalized );
-        update_user_meta( $customer_id, 'wfpl_phone_verified', 1 );
+        update_user_meta( $customer_id, 'phone_verified', 1 );
     }
 
     // Clear OTP session data.
     if ( WC()->session ) {
-        WC()->session->set( 'lawha_otp_verified_phone', '' );
-        WC()->session->set( 'lawha_otp_verified_at', 0 );
+        WC()->session->set( 'phone_auth_verified_phone', '' );
+        WC()->session->set( 'phone_auth_verified_at', 0 );
     }
 
     // Send email verification.
@@ -961,14 +957,7 @@ function lawha_normalize_phone( $phone ) {
  * when the WFPL plugin is active in headless mode.
  */
 function lawha_enqueue_phone_auth() {
-    if ( ! function_exists( 'wfpl_get_option' ) ) {
-        return;
-    }
-
-    // Only load when Firebase is configured.
-    $api_key    = wfpl_get_option( 'firebase_api_key', '' );
-    $project_id = wfpl_get_option( 'firebase_project_id', '' );
-    if ( empty( $api_key ) || empty( $project_id ) ) {
+    if ( ! function_exists( 'wfpl_is_firebase_configured' ) || ! wfpl_is_firebase_configured() ) {
         return;
     }
 
@@ -980,12 +969,12 @@ function lawha_enqueue_phone_auth() {
         return;
     }
 
-    // The WFPL plugin (headless mode) enqueues firebase SDK + intl-tel-input
-    // as 'wfpl-auth'. Our script depends on it.
+    // The plugin (headless mode) enqueues firebase SDK + intl-tel-input
+    // as 'phone-auth-sdk'. Our script depends on it.
     wp_enqueue_script(
         'lawha-phone-auth',
         LAWHA_URI . '/js/phone-auth.js',
-        array( 'jquery', 'wfpl-auth' ),
+        array( 'jquery', 'phone-auth-sdk' ),
         lawha_get_asset_version( 'js/phone-auth.js' ),
         array( 'in_footer' => true )
     );
@@ -1024,7 +1013,7 @@ function lawha_checkout_force_login() {
     }
 
     // Block logged-in users whose phone is not verified.
-    $phone_verified = get_user_meta( get_current_user_id(), 'wfpl_phone_verified', true );
+    $phone_verified = get_user_meta( get_current_user_id(), 'phone_verified', true );
     if ( '1' !== (string) $phone_verified ) {
         wc_add_notice( __( 'Please verify your phone number before checkout.', 'lawha' ), 'error' );
         wp_safe_redirect( $myaccount_url );
@@ -1058,20 +1047,11 @@ function lawha_authenticate_by_phone( $user, $username, $password ) {
 
     $normalized = lawha_normalize_phone( $cleaned );
 
-    $users = get_users( array(
-        'meta_query' => array(
-            'relation' => 'OR',
-            array( 'key' => 'wfpl_phone', 'value' => $normalized ),
-            array( 'key' => 'billing_phone', 'value' => $normalized ),
-        ),
-        'number' => 1,
-    ) );
+    $found_user = \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $normalized );
 
-    if ( empty( $users ) ) {
+    if ( ! $found_user ) {
         return $user;
     }
-
-    $found_user = $users[0];
 
     // Authenticate with the found user's login name.
     $auth_user = wp_authenticate_username_password( null, $found_user->user_login, $password );
@@ -1103,22 +1083,16 @@ function lawha_ajax_store_otp_verification() {
         wp_send_json_error( array( 'message' => 'Verification token is required.' ) );
     }
 
-    if ( class_exists( 'WFPL\Firebase_Auth' ) ) {
-        $payload = \WFPL\Firebase_Auth::verify_id_token( $firebase_token );
-        if ( is_wp_error( $payload ) ) {
-            wp_send_json_error( array( 'message' => 'Phone verification failed. Please try again.' ) );
-        }
-        // Ensure the token's phone matches the submitted phone.
-        $token_phone = isset( $payload['phone_number'] ) ? $payload['phone_number'] : '';
-        $normalized  = lawha_normalize_phone( $phone );
-        if ( $token_phone !== $normalized ) {
-            wp_send_json_error( array( 'message' => 'Phone number mismatch. Please verify the correct number.' ) );
-        }
-    } else {
-        wp_send_json_error( array( 'message' => 'Phone verification service unavailable.' ) );
+    $payload = \PhoneAuth\OTP\Verify_OTP::verify_id_token( $firebase_token );
+    if ( is_wp_error( $payload ) ) {
+        wp_send_json_error( array( 'message' => 'Phone verification failed. Please try again.' ) );
     }
-
-    $normalized = lawha_normalize_phone( $phone );
+    // Ensure the token's phone matches the submitted phone.
+    $token_phone = isset( $payload['phone_number'] ) ? $payload['phone_number'] : '';
+    $normalized  = lawha_normalize_phone( $phone );
+    if ( $token_phone !== $normalized ) {
+        wp_send_json_error( array( 'message' => 'Phone number mismatch. Please verify the correct number.' ) );
+    }
 
     if ( ! WC()->session ) {
         WC()->initialize_session();
@@ -1127,8 +1101,8 @@ function lawha_ajax_store_otp_verification() {
     if ( method_exists( WC()->session, 'has_session' ) && ! WC()->session->has_session() ) {
         WC()->session->set_customer_session_cookie( true );
     }
-    WC()->session->set( 'lawha_otp_verified_phone', $normalized );
-    WC()->session->set( 'lawha_otp_verified_at', time() );
+    WC()->session->set( 'phone_auth_verified_phone', $normalized );
+    WC()->session->set( 'phone_auth_verified_at', time() );
 
     wp_send_json_success( array( 'phone' => $normalized ) );
 }
@@ -1152,16 +1126,9 @@ function lawha_ajax_forgot_check_phone() {
     }
 
     $normalized = lawha_normalize_phone( $phone );
-    $users = get_users( array(
-        'meta_query' => array(
-            'relation' => 'OR',
-            array( 'key' => 'wfpl_phone', 'value' => $normalized ),
-            array( 'key' => 'billing_phone', 'value' => $normalized ),
-        ),
-        'number' => 1,
-    ) );
+    $user = \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $normalized );
 
-    if ( empty( $users ) ) {
+    if ( ! $user ) {
         wp_send_json_error( array( 'message' => 'No account found with this phone number.' ) );
     }
 
@@ -1189,33 +1156,26 @@ function lawha_ajax_forgot_reset_password() {
     }
 
     // Verify the Firebase ID token to ensure OTP was genuinely completed.
-    if ( ! empty( $id_token ) && class_exists( 'WFPL\Firebase_Auth' ) ) {
-        $payload = \WFPL\Firebase_Auth::verify_id_token( $id_token );
-        if ( is_wp_error( $payload ) ) {
-            wp_send_json_error( array( 'message' => 'OTP verification failed. Please try again.' ) );
-        }
-        $token_phone = isset( $payload['phone_number'] ) ? $payload['phone_number'] : '';
-        $normalized  = lawha_normalize_phone( $phone );
-        if ( $token_phone !== $normalized ) {
-            wp_send_json_error( array( 'message' => 'Phone number mismatch.' ) );
-        }
+    if ( empty( $id_token ) ) {
+        wp_send_json_error( array( 'message' => 'Verification token is required.' ) );
     }
 
-    $normalized = lawha_normalize_phone( $phone );
-    $users = get_users( array(
-        'meta_query' => array(
-            'relation' => 'OR',
-            array( 'key' => 'wfpl_phone', 'value' => $normalized ),
-            array( 'key' => 'billing_phone', 'value' => $normalized ),
-        ),
-        'number' => 1,
-    ) );
+    $payload = \PhoneAuth\OTP\Verify_OTP::verify_id_token( $id_token );
+    if ( is_wp_error( $payload ) ) {
+        wp_send_json_error( array( 'message' => 'OTP verification failed. Please try again.' ) );
+    }
+    $token_phone = isset( $payload['phone_number'] ) ? $payload['phone_number'] : '';
+    $normalized  = lawha_normalize_phone( $phone );
+    if ( $token_phone !== $normalized ) {
+        wp_send_json_error( array( 'message' => 'Phone number mismatch.' ) );
+    }
 
-    if ( empty( $users ) ) {
+    $user = \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $normalized );
+
+    if ( ! $user ) {
         wp_send_json_error( array( 'message' => 'No account found with this phone number.' ) );
     }
 
-    $user = $users[0];
     wp_set_password( $new_password, $user->ID );
 
     wp_send_json_success( array( 'message' => 'Password reset successfully.' ) );

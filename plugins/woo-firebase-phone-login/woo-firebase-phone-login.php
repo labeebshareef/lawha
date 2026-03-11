@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       WooCommerce Firebase Phone Login
  * Plugin URI:        https://github.com/lawhahijabs/woo-firebase-phone-login
- * Description:       Phone number based login & registration for WooCommerce using Firebase OTP authentication. Supports headless APIs, checkout integration, and developer extensibility.
- * Version:           1.0.0
+ * Description:       Phone number authentication for WooCommerce using Firebase OTP verification. WordPress handles all user/session management; Firebase is OTP-only.
+ * Version:           2.0.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Lawha
@@ -15,7 +15,7 @@
  * WC requires at least: 7.0
  * WC tested up to:   8.5
  *
- * @package WFPL
+ * @package PhoneAuth
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -23,14 +23,26 @@ defined( 'ABSPATH' ) || exit;
 /*--------------------------------------------------------------
  * Constants
  *------------------------------------------------------------*/
-define( 'WFPL_VERSION', '1.0.0' );
+define( 'WFPL_VERSION', '2.0.0' );
 define( 'WFPL_PLUGIN_FILE', __FILE__ );
 define( 'WFPL_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WFPL_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'WFPL_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
 /*--------------------------------------------------------------
- * Autoloader
+ * Load new modular files
+ *------------------------------------------------------------*/
+require_once WFPL_PLUGIN_DIR . 'database/phone-lookup.php';
+require_once WFPL_PLUGIN_DIR . 'database/migration.php';
+require_once WFPL_PLUGIN_DIR . 'otp/send-otp.php';
+require_once WFPL_PLUGIN_DIR . 'otp/verify-otp.php';
+require_once WFPL_PLUGIN_DIR . 'auth/login-controller.php';
+require_once WFPL_PLUGIN_DIR . 'auth/register-controller.php';
+require_once WFPL_PLUGIN_DIR . 'api/ajax-endpoints.php';
+require_once WFPL_PLUGIN_DIR . 'ui/asset-loader.php';
+
+/*--------------------------------------------------------------
+ * Legacy autoloader — kept for admin settings page & backward compat
  *------------------------------------------------------------*/
 spl_autoload_register( function ( $class ) {
 
@@ -41,7 +53,6 @@ spl_autoload_register( function ( $class ) {
 
     $relative = substr( $class, strlen( $prefix ) );
 
-    // Map namespace segments to directories.
     $map = array(
         'Admin\\'    => WFPL_PLUGIN_DIR . 'admin/',
         'Frontend\\' => WFPL_PLUGIN_DIR . 'public/',
@@ -57,7 +68,6 @@ spl_autoload_register( function ( $class ) {
         }
     }
 
-    // Default: includes directory.
     if ( empty( $file ) ) {
         $file = WFPL_PLUGIN_DIR . 'includes/class-' . strtolower( str_replace( '_', '-', $relative ) ) . '.php';
     }
@@ -77,7 +87,7 @@ add_action( 'before_woocommerce_init', function () {
 });
 
 /*--------------------------------------------------------------
- * Dependency check & bootstrap
+ * Activation hook
  *------------------------------------------------------------*/
 function wfpl_activate() {
     if ( ! class_exists( 'WooCommerce' ) ) {
@@ -91,17 +101,9 @@ function wfpl_activate() {
 
     // Set default options on first activation.
     $defaults = array(
-        'wfpl_enable_login'           => 'yes',
-        'wfpl_enable_registration'    => 'yes',
-        'wfpl_enable_checkout_login'  => 'yes',
-        'wfpl_auto_create_account'    => 'yes',
-        'wfpl_enable_popup'           => 'no',
-        'wfpl_headless_mode'          => 'no',
         'wfpl_firebase_api_key'       => '',
         'wfpl_firebase_project_id'    => '',
         'wfpl_firebase_auth_domain'   => '',
-        'wfpl_otp_expiration'         => 300,
-        'wfpl_max_otp_per_hour'       => 5,
     );
 
     foreach ( $defaults as $key => $value ) {
@@ -109,6 +111,9 @@ function wfpl_activate() {
             update_option( $key, $value );
         }
     }
+
+    // Create database index for fast phone lookups.
+    \PhoneAuth\Database\Phone_Lookup::create_index();
 }
 register_activation_hook( __FILE__, 'wfpl_activate' );
 
@@ -120,11 +125,6 @@ final class WFPL_Plugin {
     /** @var WFPL_Plugin|null */
     private static $instance = null;
 
-    /**
-     * Get the singleton instance.
-     *
-     * @return WFPL_Plugin
-     */
     public static function instance() {
         if ( is_null( self::$instance ) ) {
             self::$instance = new self();
@@ -132,9 +132,6 @@ final class WFPL_Plugin {
         return self::$instance;
     }
 
-    /**
-     * Constructor — hooks everything.
-     */
     private function __construct() {
         if ( ! $this->check_dependencies() ) {
             return;
@@ -142,11 +139,6 @@ final class WFPL_Plugin {
         $this->init_hooks();
     }
 
-    /**
-     * Bail early if WooCommerce is not active.
-     *
-     * @return bool True if all dependencies are met.
-     */
     private function check_dependencies() {
         if ( ! class_exists( 'WooCommerce' ) ) {
             add_action( 'admin_notices', function () {
@@ -159,17 +151,11 @@ final class WFPL_Plugin {
         return true;
     }
 
-    /**
-     * Register all hooks.
-     */
     private function init_hooks() {
         add_action( 'init', array( $this, 'load_textdomain' ) );
         add_action( 'init', array( $this, 'init_modules' ) );
     }
 
-    /**
-     * Load plugin text domain.
-     */
     public function load_textdomain() {
         load_plugin_textdomain(
             'woo-firebase-phone-login',
@@ -180,45 +166,63 @@ final class WFPL_Plugin {
 
     /**
      * Initialise all modules.
+     *
+     * Architecture:
+     *   - PhoneAuth\API\Ajax_Endpoints  → AJAX handlers (login, register, check, OTP, forgot)
+     *   - PhoneAuth\UI\Asset_Loader     → Enqueues Firebase SDK + phone-auth JS (headless)
+     *   - WFPL\Admin\Settings_Page      → Admin settings (kept from v1)
      */
     public function init_modules() {
-        // Core (static utility classes — no need to instantiate).
-        // \WFPL\Helpers, \WFPL\Firebase_Auth, \WFPL\Auth_Controller are all static.
-        // \WFPL\User_Handler is static.
+        // New modules (static classes).
+        \PhoneAuth\API\Ajax_Endpoints::init();
+        \PhoneAuth\UI\Asset_Loader::init();
 
-        // Register phone ↔ WooCommerce sync hooks.
-        \WFPL\User_Handler::register_sync_hooks();
-
-        // Admin.
+        // Admin settings page (legacy, still useful).
         if ( is_admin() ) {
             new \WFPL\Admin\Settings_Page();
             $this->maybe_show_firebase_notice();
+            $this->maybe_show_migration_notice();
         }
-
-        // Frontend.
-        new \WFPL\Frontend\Login_UI();
-        new \WFPL\Frontend\Shortcodes();
-        new \WFPL\Frontend\Ajax_Handlers();
-        new \WFPL\Frontend\Checkout_Enforcer();
-
-        // REST API.
-        new \WFPL\API\Rest_API();
     }
 
-    /**
-     * Show an admin notice when Firebase credentials are missing.
-     */
     private function maybe_show_firebase_notice() {
-        if ( \WFPL\Helpers::is_firebase_configured() ) {
+        if ( \PhoneAuth\OTP\Send_OTP::is_firebase_configured() ) {
             return;
         }
 
         add_action( 'admin_notices', function () {
             $url = admin_url( 'admin.php?page=wc-settings&tab=wfpl' );
             echo '<div class="notice notice-warning is-dismissible"><p>';
-            echo '<strong>' . esc_html__( 'Firebase Phone Login:', 'woo-firebase-phone-login' ) . '</strong> ';
-            echo esc_html__( 'Firebase API keys are not configured. Phone login will not work until you add your Firebase credentials.', 'woo-firebase-phone-login' );
+            echo '<strong>' . esc_html__( 'Phone Auth:', 'woo-firebase-phone-login' ) . '</strong> ';
+            echo esc_html__( 'Firebase API keys are not configured. Phone authentication will not work.', 'woo-firebase-phone-login' );
             echo ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'Configure now &rarr;', 'woo-firebase-phone-login' ) . '</a>';
+            echo '</p></div>';
+        });
+    }
+
+    private function maybe_show_migration_notice() {
+        if ( \PhoneAuth\Database\Migration::is_migrated() ) {
+            return;
+        }
+
+        // Only show if there are legacy wfpl_phone entries to migrate.
+        global $wpdb;
+        $legacy_count = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->usermeta} WHERE meta_key = 'wfpl_phone' AND meta_value != ''"
+        );
+
+        if ( $legacy_count === 0 ) {
+            return;
+        }
+
+        add_action( 'admin_notices', function () use ( $legacy_count ) {
+            echo '<div class="notice notice-info is-dismissible"><p>';
+            echo '<strong>' . esc_html__( 'Phone Auth Migration:', 'woo-firebase-phone-login' ) . '</strong> ';
+            echo esc_html( sprintf(
+                /* translators: %d: number of users */
+                __( '%d users have legacy phone data (wfpl_phone) that should be migrated to billing_phone. Run the migration from Tools or WP-CLI.', 'woo-firebase-phone-login' ),
+                $legacy_count
+            ) );
             echo '</p></div>';
         });
     }
@@ -232,6 +236,19 @@ add_action( 'plugins_loaded', function () {
 });
 
 /*--------------------------------------------------------------
- * Load global public API functions.
+ * Global helper functions — backward compatibility
  *------------------------------------------------------------*/
-require_once WFPL_PLUGIN_DIR . 'includes/public-api.php';
+
+/**
+ * Get a plugin option (backward compat wrapper).
+ */
+function wfpl_get_option( $key, $default = '' ) {
+    return get_option( 'wfpl_' . ltrim( $key, 'wfpl_' ), $default );
+}
+
+/**
+ * Check if Firebase is configured.
+ */
+function wfpl_is_firebase_configured() {
+    return \PhoneAuth\OTP\Send_OTP::is_firebase_configured();
+}

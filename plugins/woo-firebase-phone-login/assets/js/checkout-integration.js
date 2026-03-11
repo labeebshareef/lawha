@@ -10,7 +10,7 @@
  * @package WFPL
  */
 
-/* global jQuery, wfpl_config */
+/* global jQuery, phoneAuthConfig, wfpl_config */
 
 (function ($) {
     'use strict';

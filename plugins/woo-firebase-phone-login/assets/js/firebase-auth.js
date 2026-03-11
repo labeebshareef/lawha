@@ -7,13 +7,18 @@
  *   WFPL.verifyOTP(code)
  *   WFPL.login(phone, token)
  *
- * @package WFPL
+ * @package PhoneAuth
  */
 
-/* global firebase, intlTelInput, wfpl_config, jQuery */
+/* global firebase, intlTelInput, phoneAuthConfig, wfpl_config, jQuery */
 
 (function ($) {
     'use strict';
+
+    // Support both new (phoneAuthConfig) and legacy (wfpl_config) variable names.
+    const config = (typeof phoneAuthConfig !== 'undefined') ? phoneAuthConfig
+                 : (typeof wfpl_config !== 'undefined') ? wfpl_config
+                 : null;
 
     /* ================================================================
      *  State
@@ -36,7 +41,7 @@
          * Initialize Firebase and bind UI.
          */
         init() {
-            if (!wfpl_config || !wfpl_config.firebase || !wfpl_config.firebase.apiKey) {
+            if (!config || !config.firebase || !config.firebase.apiKey) {
                 console.warn('[WFPL] Firebase not configured — phone login is disabled.');
                 // Hide all login containers so the user doesn’t see a broken form.
                 $('.wfpl-login-container').hide();
@@ -55,7 +60,7 @@
             // Initialize Firebase (compat SDK).
             try {
                 if (!firebase.apps.length) {
-                    firebase.initializeApp(wfpl_config.firebase);
+                    firebase.initializeApp(config.firebase);
                 }
             } catch (err) {
                 console.error('[WFPL] Firebase initialization failed:', err);
@@ -132,12 +137,12 @@
         async login(idToken) {
             return new Promise((resolve, reject) => {
                 $.ajax({
-                    url:      wfpl_config.ajax_url,
+                    url:      config.ajax_url,
                     method:   'POST',
                     dataType: 'json',
                     data: {
-                        action:         'wfpl_verify_token',
-                        nonce:          wfpl_config.nonce,
+                        action:         'phone_auth_login',
+                        nonce:          config.nonce,
                         firebase_token: idToken,
                     },
                     success(res) {
@@ -190,7 +195,7 @@
             const phone = iti ? iti.getNumber() : $(phoneInput).val();
 
             if (!phone || phone.length < 8) {
-                showMessage($container, wfpl_config.i18n.invalid_phone, 'error');
+                showMessage($container, config.i18n.invalid_phone, 'error');
                 return;
             }
 
@@ -200,13 +205,13 @@
 
             try {
                 await WFPL.sendOTP(phone, recaptchaEl);
-                showMessage($container, wfpl_config.i18n.otp_sent, 'success');
+                showMessage($container, config.i18n.otp_sent, 'success');
                 switchStep($container, 'otp');
                 startTimer($container);
                 autoFocusOtp($container);
             } catch (err) {
                 console.error('[WFPL]', err);
-                showMessage($container, err.message || wfpl_config.i18n.otp_failed, 'error');
+                showMessage($container, err.message || config.i18n.otp_failed, 'error');
                 // Reset reCAPTCHA on error.
                 state.recaptchaVerifier = null;
             } finally {
@@ -220,7 +225,7 @@
             const code = getOtpValue($container);
 
             if (code.length !== 6) {
-                showMessage($container, wfpl_config.i18n.enter_otp, 'error');
+                showMessage($container, config.i18n.enter_otp, 'error');
                 return;
             }
 
@@ -231,7 +236,7 @@
                 const credential = await WFPL.verifyOTP(code);
                 const idToken    = await credential.user.getIdToken();
 
-                showMessage($container, wfpl_config.i18n.verifying, 'info');
+                showMessage($container, config.i18n.verifying, 'info');
 
                 const result = await WFPL.login(idToken);
 
@@ -244,12 +249,12 @@
                 // On other pages (My Account, popup, shortcode), redirect.
                 if (ctx !== 'checkout') {
                     setTimeout(() => {
-                        window.location.href = result.redirect_url || wfpl_config.redirect_url || '/';
+                        window.location.href = result.redirect_url || config.redirect_url || '/';
                     }, 1000);
                 }
             } catch (err) {
                 console.error('[WFPL]', err);
-                showMessage($container, err.message || wfpl_config.i18n.verify_failed, 'error');
+                showMessage($container, err.message || config.i18n.verify_failed, 'error');
             } finally {
                 setLoading(btn, false);
             }
@@ -302,12 +307,12 @@
 
             try {
                 await WFPL.sendOTP(state.phone, recaptchaEl);
-                showMessage($container, wfpl_config.i18n.otp_sent, 'success');
+                showMessage($container, config.i18n.otp_sent, 'success');
                 startTimer($container);
                 resetOtpInputs($container);
                 autoFocusOtp($container);
             } catch (err) {
-                showMessage($container, err.message || wfpl_config.i18n.otp_failed, 'error');
+                showMessage($container, err.message || config.i18n.otp_failed, 'error');
                 btn.show();
             }
         });
@@ -382,7 +387,7 @@
 
     function startTimer($container) {
         clearTimer();
-        let seconds = parseInt(wfpl_config.otp_expiration, 10) || 300;
+        let seconds = parseInt(config.otp_expiration, 10) || 300;
         const $timer  = $container.find('.wfpl-timer');
         const $resend = $container.find('.wfpl-resend-btn');
 
@@ -412,7 +417,7 @@
     function updateTimerDisplay($timer, seconds) {
         const m = String(Math.floor(seconds / 60)).padStart(2, '0');
         const s = String(seconds % 60).padStart(2, '0');
-        $timer.text(wfpl_config.i18n.resend_in.replace('%s', `${m}:${s}`));
+        $timer.text(config.i18n.resend_in.replace('%s', `${m}:${s}`));
     }
 
     /* ================================================================
