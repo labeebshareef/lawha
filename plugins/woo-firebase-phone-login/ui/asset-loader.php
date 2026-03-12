@@ -120,11 +120,6 @@ class Asset_Loader {
             return true;
         }
 
-        // Load on checkout for guests only.
-        if ( ! is_user_logged_in() && function_exists( 'is_checkout' ) && is_checkout() ) {
-            return true;
-        }
-
         return false;
     }
 }

@@ -99,38 +99,6 @@ class Settings_Page {
             ),
 
             array(
-                'title'   => __( 'Enable Checkout Login', 'woo-firebase-phone-login' ),
-                'desc'    => __( 'Show phone login form on the checkout page.', 'woo-firebase-phone-login' ),
-                'id'      => 'wfpl_enable_checkout_login',
-                'default' => 'yes',
-                'type'    => 'checkbox',
-            ),
-
-            array(
-                'title'   => __( 'Auto Create Account (Legacy)', 'woo-firebase-phone-login' ),
-                'desc'    => __( 'Deprecated: Login no longer auto-creates accounts. Users must register explicitly via the registration form.', 'woo-firebase-phone-login' ),
-                'id'      => 'wfpl_auto_create_account',
-                'default' => 'no',
-                'type'    => 'checkbox',
-            ),
-
-            array(
-                'title'   => __( 'Enable Popup Login', 'woo-firebase-phone-login' ),
-                'desc'    => __( 'Show a popup-style login modal instead of inline form.', 'woo-firebase-phone-login' ),
-                'id'      => 'wfpl_enable_popup',
-                'default' => 'no',
-                'type'    => 'checkbox',
-            ),
-
-            array(
-                'title'   => __( 'Headless Mode', 'woo-firebase-phone-login' ),
-                'desc'    => __( 'Only expose the JS SDK (WFPL.sendOTP, WFPL.verifyOTP, WFPL.login) without rendering any plugin UI. Enable this when the theme provides its own phone login forms.', 'woo-firebase-phone-login' ),
-                'id'      => 'wfpl_headless_mode',
-                'default' => 'no',
-                'type'    => 'checkbox',
-            ),
-
-            array(
                 'type' => 'sectionend',
                 'id'   => 'wfpl_general_section',
             ),

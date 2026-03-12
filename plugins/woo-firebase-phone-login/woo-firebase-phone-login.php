@@ -38,39 +38,22 @@ require_once WFPL_PLUGIN_DIR . 'otp/send-otp.php';
 require_once WFPL_PLUGIN_DIR . 'otp/verify-otp.php';
 require_once WFPL_PLUGIN_DIR . 'auth/login-controller.php';
 require_once WFPL_PLUGIN_DIR . 'auth/register-controller.php';
+require_once WFPL_PLUGIN_DIR . 'auth/wc-hooks.php';
 require_once WFPL_PLUGIN_DIR . 'api/ajax-endpoints.php';
 require_once WFPL_PLUGIN_DIR . 'ui/asset-loader.php';
 
 /*--------------------------------------------------------------
- * Legacy autoloader — kept for admin settings page & backward compat
+ * Autoloader — admin settings page only
  *------------------------------------------------------------*/
 spl_autoload_register( function ( $class ) {
 
-    $prefix = 'WFPL\\';
+    $prefix = 'WFPL\\Admin\\';
     if ( strpos( $class, $prefix ) !== 0 ) {
         return;
     }
 
     $relative = substr( $class, strlen( $prefix ) );
-
-    $map = array(
-        'Admin\\'    => WFPL_PLUGIN_DIR . 'admin/',
-        'Frontend\\' => WFPL_PLUGIN_DIR . 'public/',
-        'API\\'      => WFPL_PLUGIN_DIR . 'api/',
-    );
-
-    $file = '';
-    foreach ( $map as $ns => $dir ) {
-        if ( strpos( $relative, $ns ) === 0 ) {
-            $relative = substr( $relative, strlen( $ns ) );
-            $file     = $dir . 'class-' . strtolower( str_replace( '_', '-', $relative ) ) . '.php';
-            break;
-        }
-    }
-
-    if ( empty( $file ) ) {
-        $file = WFPL_PLUGIN_DIR . 'includes/class-' . strtolower( str_replace( '_', '-', $relative ) ) . '.php';
-    }
+    $file     = WFPL_PLUGIN_DIR . 'admin/class-' . strtolower( str_replace( '_', '-', $relative ) ) . '.php';
 
     if ( file_exists( $file ) ) {
         require_once $file;
@@ -166,16 +149,12 @@ final class WFPL_Plugin {
 
     /**
      * Initialise all modules.
-     *
-     * Architecture:
-     *   - PhoneAuth\API\Ajax_Endpoints  → AJAX handlers (login, register, check, OTP, forgot)
-     *   - PhoneAuth\UI\Asset_Loader     → Enqueues Firebase SDK + phone-auth JS (headless)
-     *   - WFPL\Admin\Settings_Page      → Admin settings (kept from v1)
      */
     public function init_modules() {
         // New modules (static classes).
         \PhoneAuth\API\Ajax_Endpoints::init();
         \PhoneAuth\UI\Asset_Loader::init();
+        \PhoneAuth\Auth\WC_Hooks::init();
 
         // Admin settings page (legacy, still useful).
         if ( is_admin() ) {

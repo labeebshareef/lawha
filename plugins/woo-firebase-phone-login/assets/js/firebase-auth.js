@@ -242,16 +242,12 @@
 
                 switchStep($container, 'success');
 
-                // Dispatch event for checkout integration and third-party listeners.
+                // Dispatch event for third-party listeners.
                 $(document).trigger('wfpl:login_success', [{ ...result, phone: state.phone }]);
 
-                // On checkout, stay on the page so the user can continue filling out billing/shipping.
-                // On other pages (My Account, popup, shortcode), redirect.
-                if (ctx !== 'checkout') {
-                    setTimeout(() => {
-                        window.location.href = result.redirect_url || config.redirect_url || '/';
-                    }, 1000);
-                }
+                setTimeout(() => {
+                    window.location.href = result.redirect_url || config.redirect_url || '/';
+                }, 1000);
             } catch (err) {
                 console.error('[WFPL]', err);
                 showMessage($container, err.message || config.i18n.verify_failed, 'error');

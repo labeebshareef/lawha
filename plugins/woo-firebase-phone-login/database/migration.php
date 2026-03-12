@@ -3,12 +3,14 @@
  * Migration — Consolidate phone data to billing_phone.
  *
  * Steps:
- *   1. Normalize all billing_phone values to E.164 (+971 UAE, +91 India)
- *   2. Copy wfpl_phone → billing_phone where billing_phone is empty
+ *   1. Copy wfpl_phone → billing_phone where billing_phone is empty
+ *   2. Normalize all billing_phone values to E.164 (+971 UAE, +91 India)
  *   3. Detect & report duplicate phone numbers
  *   4. Rename wfpl_phone_verified → phone_verified
  *   5. Create database index for fast phone lookups
- *   6. Clean up stale wfpl_* meta keys
+ *
+ * Cleanup (manual, after verifying migration):
+ *   - cleanup_old_meta() removes stale wfpl_phone, wfpl_phone_verified, wfpl_firebase_uid
  *
  * Usage: Load this file via admin action or WP-CLI.
  * The migrate() method is idempotent and safe to run multiple times.

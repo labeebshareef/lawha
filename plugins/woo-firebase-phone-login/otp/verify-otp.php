@@ -116,6 +116,11 @@ class Verify_OTP {
             return new \WP_Error( 'phone_auth_invalid_iat', __( 'Token issued in the future.', 'woo-firebase-phone-login' ) );
         }
 
+        // OTP expiry: reject if authentication happened more than OTP_EXPIRY seconds ago.
+        if ( ! empty( $payload['auth_time'] ) && ( $now - $payload['auth_time'] ) > self::OTP_EXPIRY ) {
+            return new \WP_Error( 'phone_auth_otp_expired', __( 'OTP verification has expired. Please request a new code.', 'woo-firebase-phone-login' ) );
+        }
+
         if ( empty( $payload['sub'] ) ) {
             return new \WP_Error( 'phone_auth_missing_sub', __( 'Token missing subject.', 'woo-firebase-phone-login' ) );
         }
