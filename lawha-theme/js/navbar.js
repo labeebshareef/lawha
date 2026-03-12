@@ -15,19 +15,13 @@
     if (!navbar) return;
 
     /* ---- Scroll-based navbar styling ---- */
-    var lastScrollY = 0;
     var ticking = false;
 
     function updateNavbar() {
       var scrollY = window.scrollY;
 
-      if (scrollY > 50) {
-        navbar.classList.add('scrolled');
-      } else {
-        navbar.classList.remove('scrolled');
-      }
+      navbar.classList.toggle('scrolled', scrollY > 50);
 
-      lastScrollY = scrollY;
       ticking = false;
     }
 

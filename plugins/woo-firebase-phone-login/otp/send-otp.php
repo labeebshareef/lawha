@@ -69,9 +69,8 @@ class Send_OTP {
         }
 
         return array(
-            'success'  => true,
-            'phone'    => $phone,
-            'firebase' => $config,
+            'success' => true,
+            'phone'   => $phone,
         );
     }
 
@@ -143,18 +142,49 @@ class Send_OTP {
      * @return string
      */
     private static function get_client_ip() {
-        $headers = array( 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR' );
-        foreach ( $headers as $header ) {
-            if ( ! empty( $_SERVER[ $header ] ) ) {
-                $ip = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
-                if ( strpos( $ip, ',' ) !== false ) {
-                    $ip = trim( explode( ',', $ip )[0] );
-                }
-                if ( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
-                    return $ip;
-                }
+        $remote = isset( $_SERVER['REMOTE_ADDR'] )
+            ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) )
+            : '127.0.0.1';
+
+        // Only trust Cloudflare header if admin has enabled it and REMOTE_ADDR is a Cloudflare IP.
+        if ( get_option( 'wfpl_behind_cloudflare', false )
+             && ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] )
+             && self::is_cloudflare_ip( $remote ) ) {
+            $ip = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ) );
+            if ( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+                return $ip;
             }
         }
-        return '127.0.0.1';
+
+        return filter_var( $remote, FILTER_VALIDATE_IP ) ? $remote : '127.0.0.1';
+    }
+
+    /**
+     * Check if an IP belongs to Cloudflare's published ranges.
+     *
+     * @param string $ip
+     * @return bool
+     */
+    private static function is_cloudflare_ip( $ip ) {
+        $cf_ranges = array(
+            '173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22',
+            '103.31.4.0/22', '141.101.64.0/18', '108.162.192.0/18',
+            '190.93.240.0/20', '188.114.96.0/20', '197.234.240.0/22',
+            '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
+            '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
+        );
+        $ip_long = ip2long( $ip );
+        if ( false === $ip_long ) {
+            return false;
+        }
+        foreach ( $cf_ranges as $range ) {
+            list( $subnet, $bits ) = explode( '/', $range );
+            $subnet_long = ip2long( $subnet );
+            $mask        = -1 << ( 32 - (int) $bits );
+            if ( ( $ip_long & $mask ) === ( $subnet_long & $mask ) ) {
+                return true;
+            }
+        }
+        return false;
     }
 }

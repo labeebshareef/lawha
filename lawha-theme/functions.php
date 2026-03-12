@@ -717,11 +717,11 @@ function lawha_create_pages() {
         ),
         'faq' => array(
             'title'   => 'FAQ',
-            'content' => '<h2>Frequently Asked Questions</h2><h3>How do I place an order?</h3><p>You can order directly through our website or via WhatsApp at +971 50 123 4567.</p><h3>What payment methods do you accept?</h3><p>We accept credit/debit cards, bank transfers, and cash on delivery within the UAE.</p><h3>Can I return or exchange a product?</h3><p>Yes, we accept returns and exchanges within 14 days of delivery. Items must be unworn and in original packaging.</p><h3>Do you ship internationally?</h3><p>Yes, we ship worldwide. International shipping rates apply.</p><h3>How do I care for my hijab?</h3><p>We recommend hand washing in cold water or using a delicate machine cycle. Lay flat to dry. Iron on low heat if needed.</p>',
+            'content' => '<h2>Frequently Asked Questions</h2><h3>How do I place an order?</h3><p>You can order directly through our website or via WhatsApp at ' . esc_html( lawha_get_contact_phone() ) . '.</p><h3>What payment methods do you accept?</h3><p>We accept credit/debit cards, bank transfers, and cash on delivery within the UAE.</p><h3>Can I return or exchange a product?</h3><p>Yes, we accept returns and exchanges within 14 days of delivery. Items must be unworn and in original packaging.</p><h3>Do you ship internationally?</h3><p>Yes, we ship worldwide. International shipping rates apply.</p><h3>How do I care for my hijab?</h3><p>We recommend hand washing in cold water or using a delicate machine cycle. Lay flat to dry. Iron on low heat if needed.</p>',
         ),
         'returns' => array(
             'title'   => 'Returns & Exchanges',
-            'content' => '<h2>Returns & Exchanges</h2><p>We want you to love your LAWHA hijab. If you are not satisfied, we offer hassle-free returns and exchanges.</p><h3>Return Policy</h3><p>Items may be returned within 14 days of delivery. Products must be unworn, unwashed, and in their original packaging.</p><h3>How to Return</h3><p>Contact us at hello@lawhahijabs.com or via WhatsApp to initiate a return. We will provide you with a return shipping label.</p><h3>Exchanges</h3><p>We offer free exchanges for different colors or sizes, subject to availability.</p><h3>Refunds</h3><p>Refunds will be processed within 5-7 business days after we receive the returned item.</p>',
+            'content' => '<h2>Returns & Exchanges</h2><p>We want you to love your LAWHA hijab. If you are not satisfied, we offer hassle-free returns and exchanges.</p><h3>Return Policy</h3><p>Items may be returned within 14 days of delivery. Products must be unworn, unwashed, and in their original packaging.</p><h3>How to Return</h3><p>Contact us at ' . esc_html( lawha_get_contact_email() ) . ' or via WhatsApp to initiate a return. We will provide you with a return shipping label.</p><h3>Exchanges</h3><p>We offer free exchanges for different colors or sizes, subject to availability.</p><h3>Refunds</h3><p>Refunds will be processed within 5-7 business days after we receive the returned item.</p>',
         ),
     );
 
@@ -739,6 +739,38 @@ function lawha_create_pages() {
 }
 add_action( 'after_switch_theme', 'lawha_create_pages' );
 
+add_action( 'save_post_page', function () {
+    delete_transient( 'lawha_footer_pages' );
+} );
+
+
+/* =========================================
+   CONTACT INFO HELPERS
+   ========================================= */
+function lawha_get_contact_phone() {
+    return get_theme_mod( 'lawha_contact_phone', '+971501234567' );
+}
+
+function lawha_get_contact_email() {
+    return get_theme_mod( 'lawha_contact_email', 'hello@lawhahijabs.com' );
+}
+
+function lawha_get_whatsapp_number() {
+    return preg_replace( '/[^\d]/', '', lawha_get_contact_phone() );
+}
+
+add_action( 'customize_register', function ( $wp_customize ) {
+    $wp_customize->add_section( 'lawha_contact', array(
+        'title'    => __( 'Contact Information', 'lawha' ),
+        'priority' => 30,
+    ) );
+
+    $wp_customize->add_setting( 'lawha_contact_phone', array( 'default' => '+971501234567', 'sanitize_callback' => 'sanitize_text_field' ) );
+    $wp_customize->add_control( 'lawha_contact_phone', array( 'label' => __( 'Phone Number (E.164)', 'lawha' ), 'section' => 'lawha_contact', 'type' => 'text' ) );
+
+    $wp_customize->add_setting( 'lawha_contact_email', array( 'default' => 'hello@lawhahijabs.com', 'sanitize_callback' => 'sanitize_email' ) );
+    $wp_customize->add_control( 'lawha_contact_email', array( 'label' => __( 'Email Address', 'lawha' ), 'section' => 'lawha_contact', 'type' => 'email' ) );
+} );
 
 /* =========================================
    SECURITY HEADERS

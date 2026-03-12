@@ -68,7 +68,7 @@ get_header();
           $about_page = get_page_by_path( 'about' );
           if ( $about_page ) :
           ?>
-            <a href="<?php echo esc_url( get_permalink( $about_page ) ); ?>" class="btn btn--outline" style="margin-top: var(--space-5);">
+            <a href="<?php echo esc_url( get_permalink( $about_page ) ); ?>" class="btn btn--outline mt-5">
               <?php esc_html_e( 'Our Journey', 'lawha' ); ?>
               <span class="btn__arrow">→</span>
             </a>
@@ -164,7 +164,7 @@ get_header();
         ?>
       </div>
 
-      <div class="text-center" style="margin-top: var(--space-7);">
+      <div class="text-center mt-7">
         <?php if ( class_exists( 'WooCommerce' ) ) : ?>
           <a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" class="btn btn--primary">
             <?php esc_html_e( 'View All Collections', 'lawha' ); ?>
@@ -351,7 +351,7 @@ get_header();
       loading="lazy"
     >
     <div class="cta-banner__content anim-fade-up">
-      <p class="overline" style="color: var(--accent-light); margin-bottom: var(--space-4);"><?php esc_html_e( 'Ready to Elevate Your Style?', 'lawha' ); ?></p>
+      <p class="overline mb-4" style="color: var(--accent-light);"><?php esc_html_e( 'Ready to Elevate Your Style?', 'lawha' ); ?></p>
       <h2 class="cta-banner__title"><?php esc_html_e( 'Wear Your Crown', 'lawha' ); ?></h2>
       <p class="cta-banner__desc"><?php esc_html_e( 'Explore our latest collection and discover the hijab that speaks to you.', 'lawha' ); ?></p>
       <?php if ( class_exists( 'WooCommerce' ) ) : ?>

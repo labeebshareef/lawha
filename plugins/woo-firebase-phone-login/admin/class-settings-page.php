@@ -181,6 +181,27 @@ class Settings_Page {
                 'type' => 'sectionend',
                 'id'   => 'wfpl_otp_section',
             ),
+
+            /*--- Network / Proxy Section ---*/
+            array(
+                'title' => __( 'Network Configuration', 'woo-firebase-phone-login' ),
+                'type'  => 'title',
+                'desc'  => __( 'Configure proxy and CDN settings for accurate rate limiting.', 'woo-firebase-phone-login' ),
+                'id'    => 'wfpl_network_section',
+            ),
+
+            array(
+                'title'   => __( 'Behind Cloudflare', 'woo-firebase-phone-login' ),
+                'desc'    => __( 'This site is behind Cloudflare (trust CF-Connecting-IP header for rate limiting).', 'woo-firebase-phone-login' ),
+                'id'      => 'wfpl_behind_cloudflare',
+                'default' => 'no',
+                'type'    => 'checkbox',
+            ),
+
+            array(
+                'type' => 'sectionend',
+                'id'   => 'wfpl_network_section',
+            ),
         );
     }
 

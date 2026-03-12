@@ -89,11 +89,11 @@ get_header();
   <section class="section section--dark" id="empowerment">
     <div class="container container--narrow text-center">
       <div class="anim-fade-up">
-        <p class="overline" style="color: var(--accent); margin-bottom: var(--space-6);"><?php esc_html_e( 'Our Promise', 'lawha' ); ?></p>
+        <p class="overline mb-6" style="color: var(--accent);"><?php esc_html_e( 'Our Promise', 'lawha' ); ?></p>
         <blockquote style="border:none;text-align:center;font-size:var(--text-3xl);color:var(--text-light);">
           <?php echo esc_html( '"A woman who wears her hijab with confidence wears a crown the world cannot take away."' ); ?>
         </blockquote>
-        <div class="divider divider--center" style="margin-top:var(--space-7);margin-bottom:var(--space-5);"></div>
+        <div class="divider divider--center mt-7 mb-5"></div>
         <p class="text-small" style="color:var(--neutral-500);">— <?php echo esc_html( get_bloginfo( 'name' ) ); ?></p>
       </div>
     </div>

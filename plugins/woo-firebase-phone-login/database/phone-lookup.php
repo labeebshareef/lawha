@@ -54,59 +54,31 @@ class Phone_Lookup {
     /**
      * Normalize a phone number to E.164 format.
      *
-     * Handles:
-     *   0501234567     → +971501234567  (UAE local)
-     *   971501234567   → +971501234567  (UAE without +)
-     *   +971501234567  → +971501234567  (already E.164)
-     *   00971501234567 → +971501234567  (international prefix)
-     *   5XXXXXXXX      → +9715XXXXXXXX  (UAE 9-digit)
+     * Only handles format cleanup — no country-code guessing.
+     * Firebase's intl-tel-input already provides E.164 from the frontend.
      *
      * @param string $phone Raw phone input.
-     * @return string Normalized E.164 phone.
+     * @return string Normalized phone (E.164 if possible).
      */
     public static function normalize_phone( $phone ) {
         $phone = trim( $phone );
 
-        // Preserve leading + and strip all non-digits.
-        $has_plus = ( substr( $phone, 0, 1 ) === '+' );
-        $digits   = preg_replace( '/[^\d]/', '', $phone );
+        // Strip formatting characters (spaces, dashes, parens, dots)
+        $clean = preg_replace( '/[\s\-\(\)\.]+/', '', $phone );
 
-        if ( empty( $digits ) ) {
-            return $phone;
+        // 00-prefix → +
+        if ( substr( $clean, 0, 2 ) === '00' ) {
+            return '+' . substr( $clean, 2 );
         }
 
-        // Already E.164 with +.
-        if ( $has_plus ) {
-            return '+' . $digits;
+        // Already E.164
+        if ( substr( $clean, 0, 1 ) === '+' ) {
+            return $clean;
         }
 
-        // International prefix 00 → +
-        if ( substr( $digits, 0, 2 ) === '00' ) {
-            return '+' . substr( $digits, 2 );
-        }
-
-        // UAE local: 05XXXXXXXX (10 digits starting with 0) → +9715XXXXXXXX
-        if ( strlen( $digits ) === 10 && substr( $digits, 0, 2 ) === '05' ) {
-            return '+971' . substr( $digits, 1 );
-        }
-
-        // UAE without leading zero: 5XXXXXXXX (9 digits starting with 5) → +9715XXXXXXXX
-        if ( strlen( $digits ) === 9 && substr( $digits, 0, 1 ) === '5' ) {
-            return '+971' . $digits;
-        }
-
-        // Indian local: 0XXXXXXXXXX (11 digits starting with 0) → +91XXXXXXXXXX
-        if ( substr( $digits, 0, 1 ) === '0' && strlen( $digits ) === 11 ) {
-            return '+91' . substr( $digits, 1 );
-        }
-
-        // Indian 10-digit (not starting with 5, to avoid UAE collision)
-        if ( strlen( $digits ) === 10 && substr( $digits, 0, 1 ) !== '5' ) {
-            return '+91' . $digits;
-        }
-
-        // Assume digits already contain country code.
-        return '+' . $digits;
+        // Cannot safely normalize without a country code — return as-is
+        // (will fail is_valid_e164() check downstream)
+        return $phone;
     }
 
     /**

@@ -132,6 +132,19 @@
 .mb-7 { margin-bottom: var(--space-7); }
 .mb-8 { margin-bottom: var(--space-8); }
 
+.pl-7 { padding-left: var(--space-7); }
+
+.w-full { width: 100%; }
+
+.no-underline { text-decoration: none; }
+
+.flex-center-wrap {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 /* ---- Full-width image ---- */
 .full-bleed {
   width: 100vw;

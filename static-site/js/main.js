@@ -21,8 +21,5 @@
     if (window.ScrollAnimations) {
       window.ScrollAnimations.init();
     }
-
-    // Log initialization in development
-    console.log('LAWHA HIJABS — Website initialized');
   });
 })();

@@ -465,6 +465,12 @@
   letter-spacing: var(--tracking-wide);
 }
 
+.archive-card__date {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  letter-spacing: var(--tracking-wide);
+}
+
 .product-card__badge {
   position: absolute;
   top: var(--space-4);

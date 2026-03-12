@@ -219,12 +219,10 @@ class Ajax_Endpoints {
             wp_send_json_error( array( 'message' => __( 'Invalid phone number.', 'woo-firebase-phone-login' ) ), 400 );
         }
 
-        $user = \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $phone );
-        if ( ! $user ) {
-            wp_send_json_error( array( 'message' => __( 'No account found with this phone number.', 'woo-firebase-phone-login' ) ) );
-        }
-
-        wp_send_json_success( array( 'found' => true ) );
+        // Always return success — do not reveal whether the phone exists.
+        wp_send_json_success( array(
+            'message' => __( 'If an account exists for this number, you will receive a verification code.', 'woo-firebase-phone-login' ),
+        ) );
     }
 
     /**
@@ -243,6 +241,10 @@ class Ajax_Endpoints {
 
         if ( strlen( $new_password ) < 8 ) {
             wp_send_json_error( array( 'message' => __( 'Password must be at least 8 characters.', 'woo-firebase-phone-login' ) ), 400 );
+        }
+
+        if ( ! preg_match( '/[A-Za-z]/', $new_password ) || ! preg_match( '/[0-9]/', $new_password ) ) {
+            wp_send_json_error( array( 'message' => __( 'Password must contain at least one letter and one number.', 'woo-firebase-phone-login' ) ), 400 );
         }
 
         // Verify Firebase token to confirm OTP was completed (includes replay protection + OTP expiry).
@@ -277,11 +279,13 @@ class Ajax_Endpoints {
      * @return string
      */
     private static function get_redirect_url() {
-        $redirect = isset( $_POST['redirect_url'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_url'] ) ) : '';
+        $redirect = isset( $_POST['redirect_url'] ) ? wp_unslash( $_POST['redirect_url'] ) : '';
 
-        if ( empty( $redirect ) && function_exists( 'wc_get_page_permalink' ) ) {
-            $redirect = wc_get_page_permalink( 'myaccount' );
-        }
+        $default = function_exists( 'wc_get_page_permalink' )
+            ? wc_get_page_permalink( 'myaccount' )
+            : home_url();
+
+        $redirect = wp_validate_redirect( $redirect, $default );
 
         return apply_filters( 'phone_auth_login_redirect', $redirect );
     }

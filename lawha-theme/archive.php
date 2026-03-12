@@ -39,13 +39,13 @@ get_header();
                 <h4 class="product-card__name">
                   <a href="<?php the_permalink(); ?>"><?php the_title(); ?></a>
                 </h4>
-                <p class="product-card__price"><?php echo esc_html( get_the_date() ); ?></p>
+                <p class="archive-card__date"><?php echo esc_html( get_the_date() ); ?></p>
               </div>
             </article>
           <?php endwhile; ?>
         </div>
 
-        <div class="text-center" style="margin-top: var(--space-7);">
+        <div class="text-center mt-7">
           <?php
           the_posts_pagination( array(
               'prev_text' => '← ' . esc_html__( 'Previous', 'lawha' ),

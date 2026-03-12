@@ -30,10 +30,14 @@ if ( ! defined( 'ABSPATH' ) ) {
           <?php endif; ?>
           <?php
           // Cache all footer page lookups in a single batch to avoid repeated queries.
-          $footer_slugs = array( 'about', 'contact', 'shipping-policy', 'size-guide', 'faq', 'returns' );
-          $footer_pages = array();
-          foreach ( $footer_slugs as $slug ) {
-              $footer_pages[ $slug ] = get_page_by_path( $slug );
+          $footer_pages = get_transient( 'lawha_footer_pages' );
+          if ( false === $footer_pages ) {
+              $footer_slugs = array( 'about', 'contact', 'shipping-policy', 'size-guide', 'faq', 'returns' );
+              $footer_pages = array();
+              foreach ( $footer_slugs as $slug ) {
+                  $footer_pages[ $slug ] = get_page_by_path( $slug );
+              }
+              set_transient( 'lawha_footer_pages', $footer_pages, DAY_IN_SECONDS );
           }
           ?>
           <?php if ( $footer_pages['about'] ) : ?>
@@ -56,9 +60,9 @@ if ( ! defined( 'ABSPATH' ) ) {
         <!-- Contact -->
         <div>
           <h4 class="footer__heading"><?php esc_html_e( 'Get in Touch', 'lawha' ); ?></h4>
-          <a href="mailto:hello@lawhahijabs.com" class="footer__link">hello@lawhahijabs.com</a>
-          <a href="tel:+971501234567" class="footer__link">+971 50 123 4567</a>
-          <a href="<?php echo esc_url( 'https://wa.me/971501234567' ); ?>" class="footer__link"><?php esc_html_e( 'WhatsApp Order', 'lawha' ); ?></a>
+          <a href="mailto:<?php echo esc_attr( lawha_get_contact_email() ); ?>" class="footer__link"><?php echo esc_html( lawha_get_contact_email() ); ?></a>
+          <a href="tel:<?php echo esc_attr( lawha_get_contact_phone() ); ?>" class="footer__link"><?php echo esc_html( lawha_get_contact_phone() ); ?></a>
+          <a href="<?php echo esc_url( 'https://wa.me/' . lawha_get_whatsapp_number() ); ?>" class="footer__link"><?php esc_html_e( 'WhatsApp Order', 'lawha' ); ?></a>
         </div>
       </div>
 
@@ -115,10 +119,10 @@ if ( ! defined( 'ABSPATH' ) ) {
           <span><?php esc_html_e( 'Subtotal', 'lawha' ); ?></span>
           <span class="lawha-minicart__subtotal-amount"><?php echo wp_kses_post( WC()->cart->get_cart_subtotal() ); ?></span>
         </div>
-        <a href="<?php echo esc_url( wc_get_cart_url() ); ?>" class="btn btn--outline" style="width:100%;margin-bottom:var(--space-3);">
+        <a href="<?php echo esc_url( wc_get_cart_url() ); ?>" class="btn btn--outline w-full mb-3">
           <?php esc_html_e( 'View Cart', 'lawha' ); ?>
         </a>
-        <a href="<?php echo esc_url( wc_get_checkout_url() ); ?>" class="btn btn--primary" style="width:100%;">
+        <a href="<?php echo esc_url( wc_get_checkout_url() ); ?>" class="btn btn--primary w-full">
           <?php esc_html_e( 'Checkout', 'lawha' ); ?>
           <span class="btn__arrow">→</span>
         </a>
