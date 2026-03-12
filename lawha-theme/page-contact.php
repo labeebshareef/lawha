@@ -89,6 +89,11 @@ get_header();
             <?php wp_nonce_field( 'lawha_contact_form', 'lawha_nonce' ); ?>
             <input type="hidden" name="lawha_contact_submit" value="1">
 
+            <!-- Honeypot — must remain empty -->
+            <div style="position:absolute;left:-9999px;" aria-hidden="true">
+                <input type="text" name="lawha_hp_field" tabindex="-1" autocomplete="off" value="">
+            </div>
+
             <?php
             // Display success message
             $sid = lawha_visitor_key();

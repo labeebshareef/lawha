@@ -18,6 +18,25 @@ defined( 'ABSPATH' ) || exit;
 
 class Login_Controller {
 
+    const MAX_LOGIN_ATTEMPTS  = 5;
+    const LOGIN_LOCKOUT_WINDOW = 900; // 15 minutes
+
+    private static function is_login_locked( $phone ) {
+        $key   = 'pa_login_' . md5( $phone );
+        $count = absint( get_transient( $key ) );
+        return $count >= self::MAX_LOGIN_ATTEMPTS;
+    }
+
+    private static function record_login_attempt( $phone ) {
+        $key   = 'pa_login_' . md5( $phone );
+        $count = absint( get_transient( $key ) );
+        set_transient( $key, $count + 1, self::LOGIN_LOCKOUT_WINDOW );
+    }
+
+    private static function clear_login_attempts( $phone ) {
+        delete_transient( 'pa_login_' . md5( $phone ) );
+    }
+
     /**
      * Process a login request with a Firebase ID token.
      *
@@ -33,7 +52,16 @@ class Login_Controller {
 
         $phone = $verification['phone'];
 
-        // 2. Rate limit check.
+        // 2. Check login lockout.
+        if ( self::is_login_locked( $phone ) ) {
+            return new \WP_Error(
+                'phone_auth_login_locked',
+                __( 'Too many login attempts. Please try again in 15 minutes.', 'woo-firebase-phone-login' ),
+                array( 'status' => 429 )
+            );
+        }
+
+        // 3. Rate limit check.
         if ( \PhoneAuth\OTP\Send_OTP::is_rate_limited( $phone ) ) {
             return new \WP_Error(
                 'phone_auth_rate_limited',
@@ -46,6 +74,7 @@ class Login_Controller {
         $user = \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $phone );
 
         if ( ! $user ) {
+            self::record_login_attempt( $phone );
             // User does not exist — DO NOT auto-create. Return redirect instruction.
             return new \WP_Error(
                 'phone_auth_not_registered',
@@ -66,6 +95,8 @@ class Login_Controller {
 
         // 5. Ensure phone_verified meta is set.
         update_user_meta( $user->ID, 'phone_verified', 1 );
+
+        self::clear_login_attempts( $phone );
 
         return array(
             'success' => true,

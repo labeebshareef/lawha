@@ -412,7 +412,7 @@ if ( class_exists( 'WooCommerce' ) ) {
         $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
         $product    = wc_get_product( $product_id );
 
-        if ( ! $product ) {
+        if ( ! $product || ! $product->is_visible() ) {
             wp_send_json_error( array( 'message' => 'Product not found.' ) );
         }
 
@@ -485,6 +485,11 @@ if ( class_exists( 'WooCommerce' ) ) {
             wp_send_json_error( array( 'message' => 'Invalid product.' ) );
         }
 
+        $product = wc_get_product( $product_id );
+        if ( ! $product || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
+            wp_send_json_error( array( 'message' => __( 'This product cannot be purchased.', 'lawha' ) ) );
+        }
+
         $added = WC()->cart->add_to_cart( $product_id, $quantity );
 
         if ( $added ) {
@@ -526,10 +531,11 @@ if ( class_exists( 'WooCommerce' ) ) {
 
         $cart_key = isset( $_POST['cart_key'] ) ? sanitize_text_field( $_POST['cart_key'] ) : '';
 
-        if ( $cart_key ) {
-            WC()->cart->remove_cart_item( $cart_key );
+        if ( empty( $cart_key ) || ! isset( WC()->cart->get_cart()[ $cart_key ] ) ) {
+            wp_send_json_error( array( 'message' => __( 'Cart item not found.', 'lawha' ) ) );
         }
 
+        WC()->cart->remove_cart_item( $cart_key );
         wp_send_json_success();
     }
     add_action( 'wp_ajax_lawha_remove_cart_item', 'lawha_remove_cart_item_handler' );
@@ -544,10 +550,15 @@ if ( class_exists( 'WooCommerce' ) ) {
         $cart_key = isset( $_POST['cart_key'] ) ? sanitize_text_field( $_POST['cart_key'] ) : '';
         $quantity = isset( $_POST['quantity'] ) ? absint( $_POST['quantity'] ) : 1;
 
-        if ( $cart_key ) {
-            WC()->cart->set_quantity( $cart_key, $quantity );
+        if ( empty( $cart_key ) || ! isset( WC()->cart->get_cart()[ $cart_key ] ) ) {
+            wp_send_json_error( array( 'message' => __( 'Cart item not found.', 'lawha' ) ) );
         }
 
+        if ( $quantity < 1 || $quantity > 99 ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid quantity.', 'lawha' ) ) );
+        }
+
+        WC()->cart->set_quantity( $cart_key, $quantity );
         wp_send_json_success();
     }
     add_action( 'wp_ajax_lawha_update_cart_qty', 'lawha_update_cart_qty_handler' );
@@ -629,6 +640,26 @@ function lawha_handle_contact_form() {
         return;
     }
 
+    // Honeypot check.
+    if ( ! empty( $_POST['lawha_hp_field'] ) ) {
+        // Bot detected — silently redirect to prevent enumeration.
+        wp_safe_redirect( wp_get_referer() ?: home_url() );
+        exit;
+    }
+
+    // Rate limit: 3 submissions per 10 minutes per visitor.
+    $rate_key    = 'lawha_cf_rate_' . lawha_visitor_key();
+    $submissions = absint( get_transient( $rate_key ) );
+    if ( $submissions >= 3 ) {
+        set_transient(
+            'lawha_contact_errors_' . lawha_visitor_key(),
+            array( __( 'Too many submissions. Please try again later.', 'lawha' ) ),
+            60
+        );
+        return;
+    }
+    set_transient( $rate_key, $submissions + 1, 600 );
+
     $name    = isset( $_POST['name'] ) ? sanitize_text_field( $_POST['name'] ) : '';
     $email   = isset( $_POST['email'] ) ? sanitize_email( $_POST['email'] ) : '';
     $subject = isset( $_POST['subject'] ) ? sanitize_text_field( $_POST['subject'] ) : 'Contact Form Inquiry';
@@ -707,6 +738,19 @@ function lawha_create_pages() {
     }
 }
 add_action( 'after_switch_theme', 'lawha_create_pages' );
+
+
+/* =========================================
+   SECURITY HEADERS
+   ========================================= */
+function lawha_security_headers( $headers ) {
+    $headers['X-Content-Type-Options'] = 'nosniff';
+    $headers['X-Frame-Options']        = 'SAMEORIGIN';
+    $headers['Referrer-Policy']        = 'strict-origin-when-cross-origin';
+    $headers['Permissions-Policy']     = 'camera=(), microphone=(), geolocation=()';
+    return $headers;
+}
+add_filter( 'wp_headers', 'lawha_security_headers' );
 
 
 /* =========================================
