@@ -673,7 +673,13 @@ function lawha_handle_contact_form() {
 
     if ( ! empty( $errors ) ) {
         set_transient( 'lawha_contact_errors_' . lawha_visitor_key(), $errors, 60 );
-        set_transient( 'lawha_contact_data_' . lawha_visitor_key(), $_POST, 60 );
+        $safe_data = array(
+            'name'    => sanitize_text_field( $_POST['name'] ?? '' ),
+            'email'   => sanitize_email( $_POST['email'] ?? '' ),
+            'subject' => sanitize_text_field( $_POST['subject'] ?? '' ),
+            'message' => sanitize_textarea_field( $_POST['message'] ?? '' ),
+        );
+        set_transient( 'lawha_contact_data_' . lawha_visitor_key(), $safe_data, 60 );
         return;
     }
 

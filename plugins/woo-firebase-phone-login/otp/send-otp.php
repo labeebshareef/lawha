@@ -160,20 +160,49 @@ class Send_OTP {
     }
 
     /**
-     * Check if an IP belongs to Cloudflare's published ranges.
+     * Get Cloudflare IPv4 ranges, cached for one week.
      *
-     * @param string $ip
-     * @return bool
+     * Fetches the live list from Cloudflare's published endpoint.
+     * Falls back to a hardcoded snapshot if the fetch fails.
+     *
+     * @return array CIDR strings.
      */
-    private static function is_cloudflare_ip( $ip ) {
-        $cf_ranges = array(
+    private static function get_cloudflare_ranges() {
+        $cached = get_transient( 'wfpl_cf_ip_ranges' );
+        if ( is_array( $cached ) && ! empty( $cached ) ) {
+            return $cached;
+        }
+
+        $response = wp_remote_get( 'https://www.cloudflare.com/ips-v4', array( 'timeout' => 5 ) );
+
+        if ( ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response ) ) {
+            $body   = trim( wp_remote_retrieve_body( $response ) );
+            $ranges = array_filter( array_map( 'trim', explode( "\n", $body ) ) );
+            if ( ! empty( $ranges ) ) {
+                set_transient( 'wfpl_cf_ip_ranges', $ranges, WEEK_IN_SECONDS );
+                return $ranges;
+            }
+        }
+
+        // Hardcoded fallback — last known good list (updated March 2026).
+        return array(
             '173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22',
             '103.31.4.0/22', '141.101.64.0/18', '108.162.192.0/18',
             '190.93.240.0/20', '188.114.96.0/20', '197.234.240.0/22',
             '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
             '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
         );
-        $ip_long = ip2long( $ip );
+    }
+
+    /**
+     * Check if an IP belongs to Cloudflare's published ranges.
+     *
+     * @param string $ip
+     * @return bool
+     */
+    private static function is_cloudflare_ip( $ip ) {
+        $cf_ranges = self::get_cloudflare_ranges();
+        $ip_long   = ip2long( $ip );
         if ( false === $ip_long ) {
             return false;
         }

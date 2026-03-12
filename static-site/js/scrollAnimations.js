@@ -60,7 +60,8 @@
       entries.forEach(function(entry) {
         if (entry.isIntersecting) {
           const children = entry.target.children;
-          Array.from(children).forEach(function(child) {
+          Array.from(children).forEach(function(child, index) {
+            child.style.transitionDelay = (index * 100) + 'ms';
             child.classList.add('is-visible');
           });
           observer.unobserve(entry.target);

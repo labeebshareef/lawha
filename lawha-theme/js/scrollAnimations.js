@@ -61,9 +61,8 @@
         if (entry.isIntersecting) {
           var children = entry.target.children;
           Array.from(children).forEach(function(child, index) {
-            setTimeout(function() {
-              child.classList.add('is-visible');
-            }, index * 100);
+            child.style.transitionDelay = (index * 100) + 'ms';
+            child.classList.add('is-visible');
           });
           observer.unobserve(entry.target);
         }
