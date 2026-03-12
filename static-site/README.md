@@ -1,5 +1,9 @@
 # LAWHA HIJABS — Premium Modest Fashion Website
 
+> **ARCHIVAL NOTICE**: This `static-site/` folder is the original static prototype.
+> It is **not used by the WordPress theme or WooCommerce runtime**.
+> It is retained for reference only and should be **excluded from production builds and deployments**.
+
 > **Wear Your Crown**
 
 A premium modest fashion brand website built with pure HTML5, CSS3, and vanilla JavaScript.

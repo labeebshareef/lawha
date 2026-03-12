@@ -29,30 +29,28 @@ if ( ! defined( 'ABSPATH' ) ) {
             <a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" class="footer__link"><?php esc_html_e( 'Collections', 'lawha' ); ?></a>
           <?php endif; ?>
           <?php
-          $about_page = get_page_by_path( 'about' );
-          $contact_page = get_page_by_path( 'contact' );
+          // Cache all footer page lookups in a single batch to avoid repeated queries.
+          $footer_slugs = array( 'about', 'contact', 'shipping-policy', 'size-guide', 'faq', 'returns' );
+          $footer_pages = array();
+          foreach ( $footer_slugs as $slug ) {
+              $footer_pages[ $slug ] = get_page_by_path( $slug );
+          }
           ?>
-          <?php if ( $about_page ) : ?>
-            <a href="<?php echo esc_url( get_permalink( $about_page ) ); ?>" class="footer__link"><?php esc_html_e( 'About Us', 'lawha' ); ?></a>
+          <?php if ( $footer_pages['about'] ) : ?>
+            <a href="<?php echo esc_url( get_permalink( $footer_pages['about'] ) ); ?>" class="footer__link"><?php esc_html_e( 'About Us', 'lawha' ); ?></a>
           <?php endif; ?>
-          <?php if ( $contact_page ) : ?>
-            <a href="<?php echo esc_url( get_permalink( $contact_page ) ); ?>" class="footer__link"><?php esc_html_e( 'Contact', 'lawha' ); ?></a>
+          <?php if ( $footer_pages['contact'] ) : ?>
+            <a href="<?php echo esc_url( get_permalink( $footer_pages['contact'] ) ); ?>" class="footer__link"><?php esc_html_e( 'Contact', 'lawha' ); ?></a>
           <?php endif; ?>
         </div>
 
         <!-- Help -->
         <div>
           <h4 class="footer__heading"><?php esc_html_e( 'Help', 'lawha' ); ?></h4>
-          <?php
-          $shipping_page = get_page_by_path( 'shipping-policy' );
-          $size_page     = get_page_by_path( 'size-guide' );
-          $faq_page      = get_page_by_path( 'faq' );
-          $returns_page  = get_page_by_path( 'returns' );
-          ?>
-          <a href="<?php echo $shipping_page ? esc_url( get_permalink( $shipping_page ) ) : '#'; ?>" class="footer__link"><?php esc_html_e( 'Shipping & Returns', 'lawha' ); ?></a>
-          <a href="<?php echo $size_page ? esc_url( get_permalink( $size_page ) ) : '#'; ?>" class="footer__link"><?php esc_html_e( 'Size Guide', 'lawha' ); ?></a>
+          <a href="<?php echo $footer_pages['shipping-policy'] ? esc_url( get_permalink( $footer_pages['shipping-policy'] ) ) : '#'; ?>" class="footer__link"><?php esc_html_e( 'Shipping & Returns', 'lawha' ); ?></a>
+          <a href="<?php echo $footer_pages['size-guide'] ? esc_url( get_permalink( $footer_pages['size-guide'] ) ) : '#'; ?>" class="footer__link"><?php esc_html_e( 'Size Guide', 'lawha' ); ?></a>
           <a href="#" class="footer__link"><?php esc_html_e( 'Care Instructions', 'lawha' ); ?></a>
-          <a href="<?php echo $faq_page ? esc_url( get_permalink( $faq_page ) ) : '#'; ?>" class="footer__link"><?php esc_html_e( 'FAQ', 'lawha' ); ?></a>
+          <a href="<?php echo $footer_pages['faq'] ? esc_url( get_permalink( $footer_pages['faq'] ) ) : '#'; ?>" class="footer__link"><?php esc_html_e( 'FAQ', 'lawha' ); ?></a>
         </div>
 
         <!-- Contact -->

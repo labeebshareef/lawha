@@ -44,8 +44,7 @@ class Ajax_Endpoints {
      * Verify nonce from request. Dies on failure.
      */
     private static function verify_request_nonce() {
-        $nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
-        if ( ! \PhoneAuth\Database\Phone_Lookup::verify_nonce( $nonce ) ) {
+        if ( ! check_ajax_referer( 'phone_auth_nonce', 'nonce', false ) ) {
             wp_send_json_error( array(
                 'message' => __( 'Security check failed. Please refresh the page.', 'woo-firebase-phone-login' ),
             ), 403 );
@@ -235,7 +234,7 @@ class Ajax_Endpoints {
         self::verify_request_nonce();
 
         $phone        = isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '';
-        $new_password = isset( $_POST['new_password'] ) ? $_POST['new_password'] : '';
+        $new_password = isset( $_POST['new_password'] ) ? wp_unslash( $_POST['new_password'] ) : '';
         $id_token     = isset( $_POST['id_token'] ) ? sanitize_text_field( wp_unslash( $_POST['id_token'] ) ) : '';
 
         if ( empty( $phone ) || empty( $new_password ) ) {

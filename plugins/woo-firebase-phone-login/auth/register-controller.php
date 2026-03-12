@@ -44,12 +44,21 @@ class Register_Controller {
             );
         }
 
-        // 3. Check if phone is already registered.
-        if ( \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $phone ) ) {
-            return new \WP_Error(
-                'phone_auth_phone_exists',
-                __( 'An account with this phone number already exists. Please log in instead.', 'woo-firebase-phone-login' ),
-                array( 'status' => 409 )
+        // 3. Check if phone is already registered — login instead of duplicating.
+        $existing_user = \PhoneAuth\Database\Phone_Lookup::find_user_by_phone( $phone );
+        if ( $existing_user ) {
+            $login = Login_Controller::wp_login( $existing_user->ID );
+            if ( is_wp_error( $login ) ) {
+                return $login;
+            }
+
+            update_user_meta( $existing_user->ID, 'phone_verified', 1 );
+
+            return array(
+                'success' => true,
+                'user_id' => $existing_user->ID,
+                'phone'   => $phone,
+                'created' => false,
             );
         }
 
