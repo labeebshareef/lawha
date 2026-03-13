@@ -29,6 +29,10 @@ class WC_Hooks {
         add_action( 'woocommerce_register_post', array( __CLASS__, 'validate_registration' ), 10, 3 );
         add_action( 'woocommerce_created_customer', array( __CLASS__, 'save_registration_data' ), 10, 1 );
 
+        // Force WooCommerce to use the user-submitted password instead of
+        // generating a random "temporary" one (our form already has password fields).
+        add_filter( 'pre_option_woocommerce_registration_generate_password', '__return_no' );
+
         // Login.
         add_filter( 'authenticate', array( __CLASS__, 'authenticate_by_phone' ), 20, 3 );
 
@@ -151,6 +155,16 @@ class WC_Hooks {
             $normalized = \PhoneAuth\Database\Phone_Lookup::normalize_phone( $phone );
             update_user_meta( $customer_id, 'billing_phone', $normalized );
             update_user_meta( $customer_id, 'phone_verified', 1 );
+        }
+
+        // Ensure the user-submitted password is applied (belt-and-suspenders
+        // in case WooCommerce still generated a temporary password).
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        if ( ! empty( $_POST['password'] ) ) {
+            wp_set_password( $_POST['password'], $customer_id );
+            // Re-log the user in because wp_set_password destroys sessions.
+            wp_set_current_user( $customer_id );
+            wp_set_auth_cookie( $customer_id, true );
         }
 
         // Clear OTP session data.
