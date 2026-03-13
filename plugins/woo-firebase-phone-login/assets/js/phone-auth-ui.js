@@ -282,12 +282,21 @@
             }
         });
 
-        /* Prevent submit if phone not verified */
+        /* Prevent submit if phone not verified; ensure E.164 value is submitted */
         $('#lawhaRegisterForm').on('submit', function (e) {
             if (!phoneVerified && $sendBtn.length) {
                 e.preventDefault();
                 showMsg('Please verify your phone number before creating your account.', 'error');
                 $regPhone.focus();
+                return;
+            }
+
+            // intl-tel-input with separateDialCode only shows the local number
+            // in the input field. The form POST would send that local number
+            // (e.g. "501234567") instead of E.164 ("+971501234567").
+            // Set the input value to the full E.164 number before submission.
+            if (regPhone) {
+                $regPhone.val(regPhone);
             }
         });
     })();
