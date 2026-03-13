@@ -14,12 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /* ── Detect Firebase availability (used for phone OTP in registration & forgot password) ── */
-$firebase_configured = false;
-if ( function_exists( 'wfpl_get_option' ) ) {
-    $api_key    = wfpl_get_option( 'firebase_api_key', '' );
-    $project_id = wfpl_get_option( 'firebase_project_id', '' );
-    $firebase_configured = ! empty( $api_key ) && ! empty( $project_id );
-}
+$firebase_configured = function_exists( 'wfpl_is_firebase_configured' ) && wfpl_is_firebase_configured();
 
 $enable_registration = 'yes' === get_option( 'woocommerce_enable_myaccount_registration' );
 

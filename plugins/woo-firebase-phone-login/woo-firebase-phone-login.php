@@ -220,9 +220,14 @@ add_action( 'plugins_loaded', function () {
 
 /**
  * Get a plugin option (backward compat wrapper).
+ *
+ * Accepts keys with or without the 'wfpl_' prefix.
+ * e.g. wfpl_get_option('firebase_api_key') and
+ *      wfpl_get_option('wfpl_firebase_api_key') both work.
  */
 function wfpl_get_option( $key, $default = '' ) {
-    return get_option( 'wfpl_' . ltrim( $key, 'wfpl_' ), $default );
+    $full_key = ( strpos( $key, 'wfpl_' ) === 0 ) ? $key : 'wfpl_' . $key;
+    return get_option( $full_key, $default );
 }
 
 /**
